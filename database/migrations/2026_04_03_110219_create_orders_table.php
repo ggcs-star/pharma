@@ -1,0 +1,43 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('orders', function (Blueprint $table) {
+            $table->id();
+
+            $table->unsignedBigInteger('user_id');
+
+            // 🔥 pharma ready fields
+            $table->string('order_no')->unique()->nullable();
+
+            $table->decimal('total', 10, 2)->default(0);
+
+            $table->enum('status', [
+                'pending',
+                'confirmed',
+                'processing',
+                'shipped',
+                'delivered',
+                'cancelled'
+            ])->default('pending');
+
+            $table->string('payment_mode')->default('cod');
+
+            $table->timestamps();
+
+            // foreign
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('orders');
+    }
+};
