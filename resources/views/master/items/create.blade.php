@@ -12,7 +12,7 @@
             <p class="text-muted mt-1">Add product details, media, and inventory information</p>
         </div>
         <div>
-            <a href="{{ route('items.index') }}" class="btn btn-outline-secondary me-2">
+            <a href="{{ route('master.items.index') }}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left"></i> Cancel
             </a>
             <button type="submit" form="productForm" class="btn btn-primary">
@@ -29,7 +29,7 @@
         </div>
     @endif
 
-    <form action="{{ route('items.store') }}" method="POST" enctype="multipart/form-data" id="productForm">
+    <form action="{{ route('master.items.store') }}" method="POST" enctype="multipart/form-data" id="productForm">
         @csrf
 
         <div class="row">

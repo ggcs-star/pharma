@@ -12,7 +12,7 @@
             <p class="text-muted mt-1">Update product information, media, and inventory</p>
         </div>
         <div>
-            <a href="{{ route('items.index') }}" class="btn btn-outline-secondary me-2">
+            <a href="{{route('master.items.index') }}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left"></i> Back to Products
             </a>
             <button type="submit" form="editProductForm" class="btn btn-primary btn-lg px-4">
@@ -21,7 +21,7 @@
         </div>
     </div>
 
-    <form action="{{ route('items.update', $item->id) }}" method="POST" enctype="multipart/form-data" id="editProductForm">
+    <form action="{{ route('master.items.update', $item->id) }}" method="POST" enctype="multipart/form-data" id="editProductForm">
         @csrf
         @method('PUT')
 

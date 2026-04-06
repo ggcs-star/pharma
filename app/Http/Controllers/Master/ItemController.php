@@ -263,7 +263,7 @@ if (!empty($galleryImages)) {
 
         Log::info('ITEM STORE SUCCESS');
 
-        return redirect()->route('items.index')
+        return redirect()->route('master.items.index')
             ->with('success', 'Item Created Successfully');
 
     } catch (\Exception $e) {
@@ -384,7 +384,7 @@ if (!empty($galleryImages)) {
 
         Log::info('ITEM UPDATE SUCCESS');
 
-        return redirect()->route('items.index')
+        return redirect()->route('master.items.index')
             ->with('success', 'Item Updated Successfully');
 
     } catch (\Exception $e) {
@@ -423,7 +423,7 @@ public function destroy(Item $item)
 
         Log::info('ITEM DELETE SUCCESS');
 
-        return redirect()->route('items.index')
+        return redirect()->route('master.items.index')
             ->with('success', 'Item Deleted');
 
     } catch (\Exception $e) {
