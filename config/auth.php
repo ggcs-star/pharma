@@ -40,9 +40,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
-           'sanctum' => [   // ✅ ADD THIS
-        'driver' => 'sanctum',
-        'provider' => 'users',
+        'sanctum' => [   // ✅ ADD THIS
+            'driver' => 'sanctum',
+            'provider' => 'users',
+        ],
+
+         'supplier' => [
+        'driver' => 'session',
+        'provider' => 'suppliers',
     ],
     ],
 
@@ -73,6 +78,11 @@ return [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
+
+      'suppliers' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\Supplier::class,
+    ],
     ],
 
     /*
