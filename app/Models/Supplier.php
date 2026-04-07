@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
-class Supplier extends Model
+use Illuminate\Foundation\Auth\User as Authenticatable;
+class Supplier extends Authenticatable
 {
     protected $fillable = [
         'name',
@@ -17,9 +17,12 @@ class Supplier extends Model
         'account_no',
         'ifsc_code',
         'address',
-        'template_id'
+        'template_id',
+        'password'
     ];
-
+    protected $hidden = [
+        'password',
+    ];
     public function template()
     {
         return $this->belongsTo(Template::class);
