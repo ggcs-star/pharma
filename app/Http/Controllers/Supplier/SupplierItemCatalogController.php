@@ -32,6 +32,8 @@ class SupplierItemCatalogController extends Controller
     {
         $request->validate([
             'item_id' => 'required',
+            'batch_no' => 'required|unique:supplier_item_catalogs,batch_no',
+            'base_price' => 'required|numeric',
             'purchase_price' => 'required|numeric',
             'retailer_price' => 'required|numeric',
             'retailer_mrp' => 'required|numeric',
@@ -45,7 +47,7 @@ class SupplierItemCatalogController extends Controller
             $data = $request->all();
             $data['supplier_id'] = auth('supplier')->id();
 
-            $data['base_price'] = $request->retailer_price;
+            $data['base_price'] = $request->base_price;
 
             $initialQty = $request->qty ?? 0;
             $data['current_stock'] = $initialQty;

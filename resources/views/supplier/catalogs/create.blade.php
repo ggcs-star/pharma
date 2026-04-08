@@ -150,6 +150,30 @@
         background: white;
     }
 
+    /* Error state styles */
+    .form-control-custom.is-invalid {
+        border-color: #ef4444;
+        background-color: #fef2f2;
+    }
+
+    .form-control-custom.is-invalid:focus {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    .invalid-feedback-custom {
+        font-size: 0.7rem;
+        color: #ef4444;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .invalid-feedback-custom i {
+        font-size: 0.65rem;
+    }
+
     select.form-control-custom {
         cursor: pointer;
         appearance: none;
@@ -238,6 +262,19 @@
         font-size: 0.85rem;
     }
 
+    /* Success Message */
+    .alert-success-custom {
+        background: #ecfdf5;
+        border-left: 4px solid #10b981;
+        padding: 16px 20px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+        color: #065f46;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .form-header {
@@ -304,6 +341,26 @@
     </a>
 </div>
 
+<!-- Display Validation Errors -->
+@if($errors->any())
+<div class="alert-danger-custom">
+    <strong><i class="fa fa-exclamation-triangle"></i> Please fix the following errors:</strong>
+    <ul class="mt-2 mb-0">
+        @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
+<!-- Display Success Message -->
+@if(session('success'))
+<div class="alert-success-custom">
+    <i class="fa fa-check-circle fa-lg"></i>
+    <span>{{ session('success') }}</span>
+</div>
+@endif
+
 <div class="form-container">
     <form method="POST" action="{{ route('supplier.catalogs.store') }}" id="catalogForm">
         @csrf
@@ -330,8 +387,11 @@
                         @endforeach
                     </select>
                     @error('item_id')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Select the product from the list</div>
                 </div>
             </div>
         </div>
@@ -355,10 +415,12 @@
                            placeholder="e.g., BATCH-2024-001" 
                            class="form-control-custom @error('batch_no') is-invalid @enderror"
                            required>
-                    <div class="helper-text">Unique batch identifier for tracking</div>
                     @error('batch_no')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Unique batch identifier for tracking</div>
                 </div>
 
                 <div class="form-group">
@@ -372,10 +434,12 @@
                            class="form-control-custom @error('expiry_date') is-invalid @enderror"
                            min="{{ date('Y-m-d') }}"
                            required>
-                    <div class="helper-text">Must be a future date</div>
                     @error('expiry_date')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Must be a future date</div>
                 </div>
 
                 <div class="form-group">
@@ -391,10 +455,12 @@
                            min="0"
                            step="1"
                            required>
-                    <div class="helper-text">Number of units available</div>
                     @error('qty')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Number of units available</div>
                 </div>
             </div>
         </div>
@@ -420,10 +486,12 @@
                            class="form-control-custom @error('purchase_price') is-invalid @enderror"
                            min="0"
                            required>
-                    <div class="helper-text">Your cost price per unit</div>
                     @error('purchase_price')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Your cost price per unit</div>
                 </div>
 
                 <div class="form-group">
@@ -439,10 +507,32 @@
                            class="form-control-custom @error('retailer_price') is-invalid @enderror"
                            min="0"
                            required>
-                    <div class="helper-text">Your selling price to retailers</div>
                     @error('retailer_price')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Your selling price to retailers</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fa fa-tag"></i>
+                        Base Price
+                    </label>
+                    <input type="number" 
+                           step="0.01" 
+                           name="base_price" 
+                           value="{{ old('base_price') }}"
+                           placeholder="Enter base price" 
+                           class="form-control-custom @error('base_price') is-invalid @enderror"
+                           min="0">
+                    @error('base_price')
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
+                    @enderror
+                    <div class="helper-text">Optional: Base reference price</div>
                 </div>
 
                 <div class="form-group">
@@ -457,10 +547,12 @@
                            placeholder="Enter MRP" 
                            class="form-control-custom @error('retailer_mrp') is-invalid @enderror"
                            min="0">
-                    <div class="helper-text">Printed maximum retail price</div>
                     @error('retailer_mrp')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Printed maximum retail price</div>
                 </div>
 
                 <div class="form-group">
@@ -476,15 +568,17 @@
                            class="form-control-custom @error('gst_percent') is-invalid @enderror"
                            min="0"
                            max="28">
-                    <div class="helper-text">Standard GST rate (0%, 5%, 12%, 18%, 28%)</div>
                     @error('gst_percent')
-                        <div class="helper-text" style="color: #ef4444;">{{ $message }}</div>
+                        <div class="invalid-feedback-custom">
+                            <i class="fa fa-exclamation-circle"></i> {{ $message }}
+                        </div>
                     @enderror
+                    <div class="helper-text">Standard GST rate (0%, 5%, 12%, 18%, 28%)</div>
                 </div>
             </div>
         </div>
 
-        <!-- Preview Section (Optional) -->
+        <!-- Preview Section -->
         <div class="form-section" id="previewSection" style="display: none;">
             <div class="section-title">
                 <i class="fa fa-eye"></i>
@@ -573,6 +667,10 @@
     function resetForm() {
         document.getElementById('catalogForm').reset();
         setTimeout(updatePreview, 100);
+        // Clear validation error styles on reset
+        document.querySelectorAll('.is-invalid').forEach(el => {
+            el.classList.remove('is-invalid');
+        });
     }
 
     // Initial preview update
@@ -585,6 +683,13 @@
             this.placeholder = "Common rates: 0, 5, 12, 18, 28";
         });
     }
+
+    // Remove is-invalid class on input focus to clear error styling
+    document.querySelectorAll('.form-control-custom').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.classList.remove('is-invalid');
+        });
+    });
 </script>
 
 @endsection
