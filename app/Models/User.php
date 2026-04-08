@@ -30,12 +30,21 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+    // 🔥 ADD THIS
+public function purchaseOrders()
+{
+    return $this->hasMany(
+        \App\Models\Purchase\PurchaseOrder::class,
+        'retailer_id'
+    );
+}
 
     public function getProfileImageAttribute($value)
     {
         if (!$value) {
             return null;
         }
+        
 
         if (str_starts_with($value, 'http')) {
             return $value;

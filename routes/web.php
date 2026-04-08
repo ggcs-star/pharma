@@ -106,6 +106,7 @@ Route::middleware(['auth'])->group(function () {
 
 });
 Route::resource('purchase-orders', PurchaseOrderController::class);
+Route::get('/item/suppliers', [\App\Http\Controllers\Purchase\PurchaseOrderController::class, 'getItemSuppliers']);
 Route::get('/purchase/{purchase}/return', [PurchaseReturnController::class, 'create']);
 Route::get(
     '/purchase-orders/{id}/convert',
@@ -250,7 +251,6 @@ Route::middleware(['auth'])->group(function () {
 
         // 👉 Import Submit (POST)
         Route::post('items/import', [ItemController::class, 'import'])->name('items.import');
-
         // 👉 Resource
         Route::resource('items', ItemController::class);
     });
