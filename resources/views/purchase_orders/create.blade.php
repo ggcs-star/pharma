@@ -123,13 +123,13 @@ data.forEach(item => {
 html += `
 <div class="supplier-card"
 data-id="${item.id}"
-data-rate="${item.retailer_mrp}"   // PTR
+data-rate="${item.retailer_price}"   // PTR
 data-mrp="${item.base_price}"      // MRP
 data-gst="${item.gst_percent}"
 style="border:1px solid #ccc; padding:10px; margin:5px; cursor:pointer; border-radius:6px;">
 
 <b>${item.supplier.name}</b><br>
-PTR: ₹${item.retailer_mrp}<br>
+PTR: ₹${item.retailer_price}<br>
 MRP: ₹${item.base_price}
 
 </div>
