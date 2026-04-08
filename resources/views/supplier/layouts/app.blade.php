@@ -36,12 +36,13 @@
                 </li>
 
                 <li class="nav-item mb-2">
-                   <a href="{{ route('supplier.items.index') }}" class="nav-link">Items</a>
+                   <a href="{{ route('supplier.catalogs.index') }}" class="nav-link">catalogs</a>
                 </li>
 
-                <li class="nav-item mb-2">
-                    <a href="#" class="nav-link">Bills</a>
+                 <li class="nav-item mb-2">
+                   <a href="{{ route('supplier.stocks.index') }}" class="nav-link">Stocks</a>
                 </li>
+
 
                 <li class="nav-item mb-2">
                     <a href="#" class="nav-link">Ledger</a>

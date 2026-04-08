@@ -28,7 +28,8 @@ use App\Http\Controllers\Sales\SalesReturnController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchaseReturnController;
 use App\Http\Controllers\Supplier\Auth\SupplierAuthController;
-use App\Http\Controllers\Supplier\SupplierItemController;
+use App\Http\Controllers\Supplier\SupplierItemCatalogController;
+use App\Http\Controllers\Supplier\SupplierStockController;
 use Illuminate\Http\Request;
 Route::get('/customer-ledger', [CustomerLedgerController::class, 'index'])->name('customer.ledger');
 
@@ -337,24 +338,44 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    Route::get('/supplier/login', [SupplierAuthController::class, 'showLogin'])->name('supplier.login');
-    Route::post('/supplier/login', [SupplierAuthController::class, 'login'])->name('supplier.login.submit');
 
+
+
+});
+Route::get('/supplier/login', [SupplierAuthController::class, 'showLogin'])->name('supplier.login');
+Route::post('/supplier/login', [SupplierAuthController::class, 'login'])->name('supplier.login.submit');
+
+
+
+
+Route::middleware('auth:supplier')->prefix('supplier')->group(function () {
+
+    Route::get('dashboard', function () {
+        return view('supplier.dashboard');
+    })->name('supplier.dashboard');
     Route::post('/supplier/logout', [SupplierAuthController::class, 'logout'])->name('supplier.logout');
 
+    Route::get('catalogs', [SupplierItemCatalogController::class, 'index'])->name('supplier.catalogs.index');
 
-    Route::middleware('auth:supplier')->prefix('supplier')->group(function () {
+    Route::get('catalogs/create', [SupplierItemCatalogController::class, 'create'])->name('supplier.catalogs.create');
 
-        Route::get('dashboard', function () {return view('supplier.dashboard'); })->name('supplier.dashboard');
-        
-        Route::get('items', [SupplierItemController::class, 'index'])->name('supplier.items.index');
-        Route::get('items/create', [SupplierItemController::class, 'create'])->name('supplier.items.create');
-        Route::post('items', [SupplierItemController::class, 'store'])->name('supplier.items.store');
-        Route::get('items/{id}/edit', [SupplierItemController::class, 'edit'])->name('supplier.items.edit');
-        Route::put('items/{id}', [SupplierItemController::class, 'update'])->name('supplier.items.update');
-        Route::delete('items/{id}', [SupplierItemController::class, 'destroy'])->name('supplier.items.destroy');
+    Route::post('catalogs', [SupplierItemCatalogController::class, 'store'])->name('supplier.catalogs.store');
 
-    });
+    Route::get('catalogs/{id}/edit', [SupplierItemCatalogController::class, 'edit'])->name('supplier.catalogs.edit');
+
+    Route::put('catalogs/{id}', [SupplierItemCatalogController::class, 'update'])->name('supplier.catalogs.update');
+
+    Route::delete('catalogs/{id}', [SupplierItemCatalogController::class, 'destroy'])->name('supplier.catalogs.destroy');
+
+
+
+    Route::get('stocks', [SupplierStockController::class, 'index'])->name('supplier.stocks.index');
+
+    Route::get('stocks/create', [SupplierStockController::class, 'create'])->name('supplier.stocks.create');
+
+    Route::post('stocks', [SupplierStockController::class, 'store'])->name('supplier.stocks.store');
+
+    Route::delete('stocks/{id}', [SupplierStockController::class, 'destroy'])->name('supplier.stocks.destroy');
 
 
 });

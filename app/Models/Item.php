@@ -183,4 +183,11 @@ class Item extends Model
     //         ->where('stock', '>', 0)
     //         ->orderBy('expiry_date');
     // }
+
+
+
+    public function catalogs()
+{
+    return $this->hasMany(SupplierItemCatalog::class);
+}
 }
