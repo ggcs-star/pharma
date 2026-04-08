@@ -30,6 +30,7 @@ use App\Http\Controllers\Purchase\PurchaseReturnController;
 use App\Http\Controllers\Supplier\Auth\SupplierAuthController;
 use App\Http\Controllers\Supplier\SupplierItemCatalogController;
 use App\Http\Controllers\Supplier\SupplierStockController;
+use App\Http\Controllers\Supplier\SupplierOrderController;
 use Illuminate\Http\Request;
 Route::get('/customer-ledger', [CustomerLedgerController::class, 'index'])->name('customer.ledger');
 
@@ -355,28 +356,19 @@ Route::middleware('auth:supplier')->prefix('supplier')->group(function () {
         return view('supplier.dashboard');
     })->name('supplier.dashboard');
     Route::post('/supplier/logout', [SupplierAuthController::class, 'logout'])->name('supplier.logout');
-
     Route::get('catalogs', [SupplierItemCatalogController::class, 'index'])->name('supplier.catalogs.index');
-
     Route::get('catalogs/create', [SupplierItemCatalogController::class, 'create'])->name('supplier.catalogs.create');
-
     Route::post('catalogs', [SupplierItemCatalogController::class, 'store'])->name('supplier.catalogs.store');
-
     Route::get('catalogs/{id}/edit', [SupplierItemCatalogController::class, 'edit'])->name('supplier.catalogs.edit');
-
     Route::put('catalogs/{id}', [SupplierItemCatalogController::class, 'update'])->name('supplier.catalogs.update');
-
     Route::delete('catalogs/{id}', [SupplierItemCatalogController::class, 'destroy'])->name('supplier.catalogs.destroy');
 
-
-
     Route::get('stocks', [SupplierStockController::class, 'index'])->name('supplier.stocks.index');
-
     Route::get('stocks/create', [SupplierStockController::class, 'create'])->name('supplier.stocks.create');
-
     Route::post('stocks', [SupplierStockController::class, 'store'])->name('supplier.stocks.store');
-
     Route::delete('stocks/{id}', [SupplierStockController::class, 'destroy'])->name('supplier.stocks.destroy');
-
-
+    Route::get('orders', [SupplierOrderController::class, 'index'])->name('supplier.orders.index');
+    Route::get('orders/{id}', [SupplierOrderController::class, 'show'])->name('supplier.orders.show');
+    Route::post('orders/{id}/status', [SupplierOrderController::class, 'updateStatus'])
+    ->name('supplier.orders.status');
 });
