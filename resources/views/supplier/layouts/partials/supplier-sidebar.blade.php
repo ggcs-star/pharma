@@ -185,6 +185,14 @@
         <i class="fa fa-chart-line me-2"></i> Stocks
     </a>
 
+    <!-- Orders -->
+    <div class="menu-title">
+        <i class="fa fa-shopping-cart me-1"></i> Orders
+    </div>
+    <a href="{{ route('supplier.orders.index') }}" class="{{ request()->routeIs('supplier.orders.*') ? 'active' : '' }}">
+        <i class="fa fa-list me-2"></i> Orders
+    </a>
+
     <!-- Ledger -->
     <div class="menu-title">
         <i class="fa fa-book me-1"></i> Accounts
@@ -193,7 +201,7 @@
         <i class="fa fa-file-invoice me-2"></i> Ledger
     </a>
 </div>
-
+supplier.orders.index
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 <script>
     // Mobile sidebar toggle functionality (same as first design)
