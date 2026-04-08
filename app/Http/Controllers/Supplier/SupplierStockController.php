@@ -9,14 +9,14 @@ use Illuminate\Http\Request;
 
 class SupplierStockController extends Controller
 {
-    public function index()
-    {
-        $stocks = SupplierStock::with('catalog.item')
-            ->latest()
-            ->get();
+   public function index()
+{
+    $stocks = SupplierStock::with('catalog.item')
+        ->latest()
+        ->paginate(10); 
 
-        return view('supplier.stocks.index', compact('stocks'));
-    }
+    return view('supplier.stocks.index', compact('stocks'));
+}
 
     public function create()
     {
@@ -32,7 +32,6 @@ class SupplierStockController extends Controller
             'type' => 'required|in:purchase,sale,return,adjustment',
         ]);
 
-        // ❗ Sale me negative qty kar do
         $qty = $request->type === 'sale'
             ? -abs($request->qty)
             : abs($request->qty);

@@ -45,17 +45,13 @@ class SupplierItemCatalogController extends Controller
             $data = $request->all();
             $data['supplier_id'] = auth('supplier')->id();
 
-            // 🔥 auto base price
             $data['base_price'] = $request->retailer_price;
 
-            // 🔥 initial stock
             $initialQty = $request->qty ?? 0;
             $data['current_stock'] = $initialQty;
 
-            // ✅ Step 1: create catalog
             $catalog = SupplierItemCatalog::create($data);
 
-            // ✅ Step 2: create stock entry (if qty given)
             if ($initialQty > 0) {
                 SupplierStock::create([
                     'supplier_item_catalog_id' => $catalog->id,
