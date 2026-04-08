@@ -104,7 +104,7 @@ class PurchaseOrderController extends Controller
                 'retailer_id' => Auth::id(), // 🔥 LOGIN USER
                 'order_number' => $orderNumber,
                 'order_date' => $request->order_date,
-                'status' => 'draft',
+                'status' => 'pending',
                 'total_amount' => 0,
                 'total_gst' => 0,
                 'total_discount' => 0,
@@ -179,6 +179,121 @@ class PurchaseOrderController extends Controller
     | Convert PO → Purchase
     |--------------------------------------------------------------------------
     */
+    public function updateStatus(Request $request, $id)
+{
+    DB::beginTransaction();
+
+    try {
+        $po = PurchaseOrder::with('items')->findOrFail($id);
+
+        $oldStatus = $po->status;
+        $newStatus = $request->status;
+
+        // 🔥 UPDATE STATUS
+        $po->update([
+            'status' => $newStatus
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | 🔥 AUTO PURCHASE WHEN DELIVERED
+        |--------------------------------------------------------------------------
+        */
+        if ($oldStatus == 'dispatched' && $newStatus == 'delivered') {
+
+            // 🚨 DUPLICATE CHECK
+            if (\App\Models\Purchase::where('purchase_order_id', $po->id)->exists()) {
+                throw new \Exception("Purchase already created for this PO");
+            }
+
+            $purchase = \App\Models\Purchase::create([
+                'supplier_id' => $po->supplier_id,
+                'invoice_number' => 'PO-' . $po->id . '-' . time(),
+                'entry_source' => 'po',
+                'purchase_order_id' => $po->id,
+                'purchase_date' => now(),
+                'payment_type' => 'Pending',
+                'entry_by' => auth()->id(),
+            ]);
+
+            $totalAmount = 0;
+            $totalGST = 0;
+
+            foreach ($po->items as $poItem) {
+
+                $catalog = \App\Models\SupplierItemCatalog::find($poItem->supplier_item_catalog_id);
+
+                if (!$catalog) continue;
+
+                $qty = $poItem->quantity;
+                $free = $catalog->free_qty ?? 0;
+                $totalQty = $qty + $free;
+
+                $basic = $qty * $catalog->purchase_price;
+                $gstAmount = ($basic * $catalog->gst_percent) / 100;
+                $total = $basic + $gstAmount;
+
+                $totalAmount += $total;
+                $totalGST += $gstAmount;
+
+                // 📦 BATCH
+                $batch = \App\Models\Batch::create([
+                    'item_id' => $poItem->item_id,
+                    'batch_code' => $catalog->batch_no,
+                    'expiry_date' => $catalog->expiry_date,
+                    'stock' => $totalQty,
+                    'mrp' => $catalog->retailer_mrp,
+                    'ptr' => $catalog->purchase_price,
+                    'selling_price' => $catalog->retailer_price,
+                    'created_by' => auth()->id(),
+                ]);
+
+                // 🧾 PURCHASE ITEM
+                \App\Models\PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'item_id' => $poItem->item_id,
+                    'batch_id' => $batch->id,
+                    'quantity' => $qty,
+                    'free_quantity' => $free,
+                    'mrp' => $catalog->retailer_mrp,
+                    'ptr' => $catalog->purchase_price,
+                    'gst_percent' => $catalog->gst_percent,
+                    'gst_amount' => $gstAmount,
+                    'taxable_amount' => $basic,
+                    'total_amount' => $total,
+                ]);
+
+                // 📊 STOCK
+                \App\Models\StockMovement::create([
+                    'item_id' => $poItem->item_id,
+                    'batch_id' => $batch->id,
+                    'type' => 'purchase',
+                    'quantity' => $totalQty,
+                    'running_stock' => $batch->stock,
+                    'reference_id' => $purchase->id,
+                    'reference_type' => 'Purchase',
+                    'user_id' => auth()->id(),
+                    'transaction_date' => now(),
+                ]);
+            }
+
+            // 💰 TOTAL UPDATE
+            $purchase->update([
+                'total_amount' => $totalAmount,
+                'total_gst' => $totalGST,
+                'net_amount' => $totalAmount,
+            ]);
+        }
+
+        DB::commit();
+
+        return back()->with('success', 'Status updated successfully');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', $e->getMessage());
+    }
+}
     public function convert($id)
     {
         return redirect()->route('purchase.create', [
