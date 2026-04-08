@@ -16,9 +16,9 @@
 <tr>
 <th>Item</th>
 <th>Qty</th>
-<th>Rate</th>
+<th>PTR (Rate)</th>
+<th>MRP</th>
 <th>GST%</th>
-<th>Disc%</th>
 <th>Total</th>
 <th></th>
 </tr>
@@ -40,14 +40,14 @@
 
 <td><input type="number" name="items[0][quantity]" class="form-control qty"></td>
 <td><input type="number" name="items[0][rate]" class="form-control rate"></td>
+<td><input type="number" class="form-control mrp" readonly></td>
 <td><input type="number" name="items[0][gst_percent]" class="form-control gst"></td>
-<td><input type="number" name="items[0][discount_percent]" class="form-control discount"></td>
 <td><input type="text" class="form-control total" readonly></td>
 <td><button type="button" class="btn btn-danger remove-row">X</button></td>
 </tr>
 
 <tr class="supplier-row" style="display:none;">
-<td colspan="7"><div class="supplier-list"></div></td>
+<td colspan="7"><div class="supplier-list d-flex flex-wrap"></div></td>
 </tr>
 
 </tbody>
@@ -65,6 +65,7 @@
 @endsection
 
 @push('scripts')
+
 <script>
 
 let rowIndex = 1;
@@ -87,14 +88,14 @@ let row = `
 
 <td><input type="number" name="items[${rowIndex}][quantity]" class="form-control qty"></td>
 <td><input type="number" name="items[${rowIndex}][rate]" class="form-control rate"></td>
+<td><input type="number" class="form-control mrp" readonly></td>
 <td><input type="number" name="items[${rowIndex}][gst_percent]" class="form-control gst"></td>
-<td><input type="number" name="items[${rowIndex}][discount_percent]" class="form-control discount"></td>
 <td><input type="text" class="form-control total" readonly></td>
 <td><button type="button" class="btn btn-danger remove-row">X</button></td>
 </tr>
 
 <tr class="supplier-row" style="display:none;">
-<td colspan="7"><div class="supplier-list"></div></td>
+<td colspan="7"><div class="supplier-list d-flex flex-wrap"></div></td>
 </tr>
 `;
 
@@ -122,17 +123,22 @@ data.forEach(item => {
 html += `
 <div class="supplier-card"
 data-id="${item.id}"
-data-rate="${item.purchase_price}"
+data-rate="${item.retailer_mrp}"   // PTR
+data-mrp="${item.base_price}"      // MRP
 data-gst="${item.gst_percent}"
-style="border:1px solid #ccc; padding:10px; margin:5px; cursor:pointer;">
+style="border:1px solid #ccc; padding:10px; margin:5px; cursor:pointer; border-radius:6px;">
+
 <b>${item.supplier.name}</b><br>
-₹${item.purchase_price}
+PTR: ₹${item.retailer_mrp}<br>
+MRP: ₹${item.base_price}
+
 </div>
 `;
 });
 
 list.innerHTML = html;
 supplierRow.style.display = 'table-row';
+
 });
 
 }
@@ -141,12 +147,13 @@ supplierRow.style.display = 'table-row';
 // SELECT SUPPLIER
 document.addEventListener('click', function(e){
 
-if(e.target.classList.contains('supplier-card')){
+if(e.target.closest('.supplier-card')){
 
-let card = e.target;
+let card = e.target.closest('.supplier-card');
 let row = card.closest('tr').previousElementSibling;
 
 row.querySelector('.rate').value = card.dataset.rate;
+row.querySelector('.mrp').value = card.dataset.mrp;
 row.querySelector('.gst').value = card.dataset.gst;
 row.querySelector('.catalog_id').value = card.dataset.id;
 
@@ -168,5 +175,16 @@ row.querySelector('.total').value = (qty * rate).toFixed(2);
 }
 });
 
+// REMOVE ROW
+document.addEventListener('click', function(e){
+if(e.target.classList.contains('remove-row')){
+    let row = e.target.closest('tr');
+    let next = row.nextElementSibling;
+    row.remove();
+    if(next && next.classList.contains('supplier-row')) next.remove();
+}
+});
+
 </script>
+
 @endpush

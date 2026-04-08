@@ -12,69 +12,74 @@ class ProductController extends Controller
     /* ===============================
         PRODUCT LIST
     =============================== */
-    public function index()
-    {
-        $items = Item::whereHas('batches', function ($q) {
-            $q->where('stock', '>', 0)
-              ->where('expiry_date', '>', now());
-        })
-        ->with([
-            'images',
-            'manufacturer:id,name',
-            'category:id,name',
-            'subCategory:id,name',
-            'unit:id,name',
-            'packType:id,name',
-            'batches'
-        ])
-        ->get()
-        ->map(function ($item) {
+public function index()
+{
+$items = Item::whereHas('batches', function ($q) {
+$q->where('stock', '>', 0)
+->where('expiry_date', '>', now());
+})
+->with([
+'images',
+'manufacturer:id,name',
+'category:id,name',
+'subCategory:id,name',
+'unit:id,name',
+'packType:id,name',
+'batches'
+])
+->get()
+->map(function ($item) {
 
-            // ✅ Get valid batch
-            $validBatch = $item->batches
-                ->where('stock', '>', 0)
-                ->where('expiry_date', '>', now())
-                ->sortBy('expiry_date')
-                ->first();
 
-            // 🔥 fallback (important)
-            if (!$validBatch) {
-                $validBatch = $item->batches->sortBy('expiry_date')->first();
-            }
+    // ✅ Get valid batch
+    $validBatch = $item->batches
+        ->where('stock', '>', 0)
+        ->where('expiry_date', '>', now())
+        ->sortBy('expiry_date')
+        ->first();
 
-            // ✅ PRICE
-$item->price = $validBatch->sale_price 
-            ?? $validBatch->selling_price 
-            ?? $validBatch->mrp 
-            ?? 0;            $item->mrp = $validBatch->mrp ?? 0;
-            $item->batch_id = $validBatch->id ?? null;
-
-            // ✅ STOCK
-            $item->in_stock = $validBatch ? true : false;
-
-            // ✅ IMAGE (S3)
-            $item->image = $item->main_image
-                ? Storage::disk('s3')->url($item->main_image)
-                : null;
-
-            $item->main_image_url = $item->image;
-
-            // ✅ GALLERY IMAGES
-            $item->images->map(function ($img) {
-                $img->image_url = $img->image
-                    ? Storage::disk('s3')->url($img->image)
-                    : null;
-                return $img;
-            });
-
-            return $item;
-        });
-
-        return response()->json([
-            'status' => true,
-            'data' => $items
-        ]);
+    // 🔥 fallback
+    if (!$validBatch) {
+        $validBatch = $item->batches->sortBy('expiry_date')->first();
     }
+
+    // 🔥 FINAL FIX (ONLY MRP)
+    $price = $validBatch->mrp ?? 0;
+
+    $item->price = $price;
+    $item->selling_price = $price; // frontend compatibility
+    $item->mrp = $price;
+    $item->batch_id = $validBatch->id ?? null;
+
+    // ✅ STOCK
+    $item->in_stock = $validBatch ? true : false;
+
+    // ✅ IMAGE
+    $item->image = $item->main_image
+        ? Storage::disk('s3')->url($item->main_image)
+        : null;
+
+    $item->main_image_url = $item->image;
+
+    // ✅ GALLERY
+    $item->images->map(function ($img) {
+        $img->image_url = $img->image
+            ? Storage::disk('s3')->url($img->image)
+            : null;
+        return $img;
+    });
+
+    return $item;
+});
+
+return response()->json([
+    'status' => true,
+    'data' => $items
+]);
+
+
+}
+
 
     /* ===============================
         SINGLE PRODUCT
