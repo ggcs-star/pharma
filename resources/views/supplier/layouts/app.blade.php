@@ -5,58 +5,158 @@
     <title>@yield('title', 'Supplier Panel')</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons (matching first design) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Additional styles for navbar and layout */
+        body {
+            background: #f1f5f9;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        
+        /* Top Navbar Styles - Modern Dark */
+        .top-navbar {
+            background: #0f172a;
+            padding: 0.75rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+        
+        .navbar-brand-custom {
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #38bdf8, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 0.5px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-name {
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            font-weight: 500;
+            background: rgba(255,255,255,0.08);
+            padding: 6px 14px;
+            border-radius: 30px;
+        }
+        
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.15);
+            border: none;
+            color: #f87171;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: #ef4444;
+            color: white;
+        }
+        
+        /* Main content area */
+        .main-content {
+            margin-left: 260px;
+            transition: all 0.3s ease;
+            padding: 20px;
+            min-height: calc(100vh - 60px);
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+        }
+        
+        /* Card styles matching modern design */
+        .content-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
 </head>
 
 <body>
 
-<!-- Navbar -->
-<nav class="navbar navbar-dark bg-dark px-3">
-    <span class="navbar-brand">Supplier Panel</span>
+<!-- Modern Navbar matching sidebar design -->
+<nav class="top-navbar d-flex justify-content-between align-items-center">
+    <span class="navbar-brand-custom">
+        <i class="fa fa-capsules me-2"></i>Supplier Portal
+    </span>
 
-    <div class="d-flex align-items-center text-white">
-        <span class="me-3">
-            {{ auth('supplier')->user()->name ?? '' }}
+    <div class="user-info">
+        <span class="user-name">
+            <i class="fa fa-user-circle me-1"></i>
+            {{ auth('supplier')->user()->name ?? 'Supplier' }}
         </span>
 
-        <form method="POST" action="{{ route('supplier.logout') }}">
+        <form method="POST" action="{{ route('supplier.logout') }}" class="m-0">
             @csrf
-            <button class="btn btn-sm btn-danger">Logout</button>
+            <button class="logout-btn">
+                <i class="fa fa-sign-out-alt me-1"></i> Logout
+            </button>
         </form>
     </div>
 </nav>
 
-<div class="container-fluid">
-    <div class="row">
-
-        <!-- Sidebar -->
-        <div class="col-md-2 bg-light vh-100 p-3">
-            <ul class="nav flex-column">
-                <li class="nav-item mb-2">
-                    <a href="{{ route('supplier.dashboard') }}" class="nav-link">Dashboard</a>
-                </li>
-
-                <li class="nav-item mb-2">
-                   <a href="{{ route('supplier.catalogs.index') }}" class="nav-link">catalogs</a>
-                </li>
-
-                 <li class="nav-item mb-2">
-                   <a href="{{ route('supplier.stocks.index') }}" class="nav-link">Stocks</a>
-                </li>
-
-
-                <li class="nav-item mb-2">
-                    <a href="#" class="nav-link">Ledger</a>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Content -->
-        <div class="col-md-10 p-4">
-            @yield('content')
-        </div>
-
-    </div>
+<!-- Main content with sidebar -->
+<div class="main-content" id="mainContent">
+    @yield('content')
 </div>
+
+<!-- Include the sidebar partial -->
+@include('supplier.layouts.partials.supplier-sidebar')
+<script>
+    // Adjust main content margin when sidebar toggles on mobile
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        
+        if (sidebar && mainContent) {
+            // Listen for sidebar toggle changes
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.attributeName === 'class') {
+                        if (window.innerWidth <= 768) {
+                            if (sidebar.classList.contains('show')) {
+                                mainContent.style.opacity = '0.5';
+                                mainContent.style.pointerEvents = 'none';
+                            } else {
+                                mainContent.style.opacity = '1';
+                                mainContent.style.pointerEvents = 'auto';
+                            }
+                        }
+                    }
+                });
+            });
+            
+            observer.observe(sidebar, { attributes: true });
+            
+            // Reset on window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    mainContent.style.opacity = '1';
+                    mainContent.style.pointerEvents = 'auto';
+                }
+            });
+        }
+    });
+</script>
 
 </body>
 </html>
