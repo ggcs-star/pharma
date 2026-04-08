@@ -107,6 +107,7 @@ Route::middleware(['auth'])->group(function () {
 });
 Route::resource('purchase-orders', PurchaseOrderController::class);
 Route::get('/item/suppliers', [\App\Http\Controllers\Purchase\PurchaseOrderController::class, 'getItemSuppliers']);
+Route::post('/purchase-orders/{id}/status', [PurchaseOrderController::class, 'updateStatus']);
 Route::get('/purchase/{purchase}/return', [PurchaseReturnController::class, 'create']);
 Route::get(
     '/purchase-orders/{id}/convert',
