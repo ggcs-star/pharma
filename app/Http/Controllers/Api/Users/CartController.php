@@ -35,10 +35,7 @@ class CartController extends Controller
             }
 
             // ✅ PRICE LOGIC
-            $price = $batch->sale_price 
-                  ?? $batch->selling_price 
-                  ?? $batch->mrp 
-                  ?? 0;
+         $price = $batch->mrp ?? 0;
 
             $cart = Cart::where('user_id', auth()->id())
                 ->where('batch_id', $batch->id)
@@ -141,10 +138,7 @@ class CartController extends Controller
             }
 
             // ✅ PRICE SYNC
-            $price = $batch->sale_price 
-                  ?? $batch->selling_price 
-                  ?? $batch->mrp 
-                  ?? 0;
+          $price = $batch->mrp ?? 0;
 
             $cart->update([
                 'qty' => $request->qty,
@@ -236,22 +230,19 @@ class CartController extends Controller
         FORMAT ITEM (🔥 FINAL FIX)
     =============================== */
     private function formatItem($c)
-    {
-        $price = $c->batch->sale_price 
-              ?? $c->batch->selling_price 
-              ?? $c->batch->mrp 
-              ?? 0;
+{
+    $price = $c->batch->mrp ?? 0;
 
-        return [
-            'id' => $c->id,
-            'batch_id' => $c->batch_id,
-            'name' => $c->item->name ?? 'Product',
-            'image' => $c->item->main_image_url ?? null,
-            'price' => $price,
-            'qty' => $c->qty,
-            'total_price' => $c->qty * $price,
-            'stock' => $c->batch->stock ?? 0,
-            'expiry' => $c->batch->expiry_date ?? null
-        ];
-    }
+    return [
+        'id' => $c->id,
+        'batch_id' => $c->batch_id,
+        'name' => $c->item->name ?? 'Product',
+        'image' => $c->item->main_image_url ?? null,
+        'price' => $price,
+        'qty' => $c->qty,
+        'total_price' => $c->qty * $price,
+        'stock' => $c->batch->stock ?? 0,
+        'expiry' => $c->batch->expiry_date ?? null
+    ];
+}
 }
