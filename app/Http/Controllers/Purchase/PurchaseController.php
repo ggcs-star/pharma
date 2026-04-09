@@ -63,13 +63,13 @@ public function index(Request $request)
     }
     
     // Filter by date range
-    if ($request->filled('from_date')) {
-        $query->whereDate('purchase_date', '>=', $request->from_date);
-    }
-    
-    if ($request->filled('to_date')) {
-        $query->whereDate('purchase_date', '<=', $request->to_date);
-    }
+if ($request->filled('from_date')) {
+    $query->where('created_at', '>=', $request->from_date . ' 00:00:00');
+}
+
+if ($request->filled('to_date')) {
+    $query->where('created_at', '<=', $request->to_date . ' 23:59:59');
+}
     
     // Calculate summary statistics
     $totalPurchases = $query->count();
@@ -573,13 +573,4 @@ public function edit($id)
             return back()->with('error', 'Failed to delete purchase: ' . $e->getMessage());
         }
     }
-    public function searchItems(Request $request)
-{
-    $q = $request->q;
-
-    return Item::select('id', 'name', 'gst_percent', 'barcode', 'rack', 'hsn_code')
-        ->where('name', 'like', "%$q%")
-        ->limit(20)
-        ->get();
-}
 }
