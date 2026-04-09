@@ -174,7 +174,7 @@
     <div class="d-flex flex-wrap gap-3 mt-2">
         <!-- User Login -->
         <a href="{{ route('login') }}" class="btn btn-gradient px-4 py-2">
-            <i class="fas fa-sign-in-alt me-2"></i>User Login
+            <i class="fas fa-sign-in-alt me-2"></i>Retailer Login
         </a>
 
         <!-- Supplier Login -->
