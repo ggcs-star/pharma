@@ -239,7 +239,7 @@ class PurchaseOrderController extends Controller
                 // 📦 BATCH
                 $batch = \App\Models\Batch::create([
                     'item_id' => $poItem->item_id,
-                    'batch_code' => $catalog->batch_no,
+'batch_code' => 'BATCH-' . $poItem->item_id . '-' . time(),
                     'expiry_date' => $catalog->expiry_date,
                     'stock' => $totalQty,
                     'mrp' => $catalog->retailer_mrp,
