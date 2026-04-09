@@ -158,19 +158,41 @@
     <section class="container pt-5 pb-4">
         <div class="row align-items-center g-5 py-3 py-lg-5">
             <div class="col-lg-6">
-                <div class="pe-lg-4">
-                    <span class="badge-soft d-inline-block mb-3"><i class="fas fa-capsules me-1"></i> Next‑Gen Pharmacy Tech</span>
-                    <h1 class="display-4 fw-bold mb-3" style="line-height: 1.2;">Pharma ERP – <br>Smart Pharmacy Management System</h1>
-                    <p class="lead text-secondary mb-4">Manage inventory, billing, purchase, sales, and reports in one powerful system</p>
-                    <div class="d-flex flex-wrap gap-3 mt-2">
-                        <a href="{{ route('login') }}" class="btn btn-gradient px-4 py-2"><i class="fas fa-sign-in-alt me-2"></i>Login</a>
-                        <button class="btn btn-outline-light-custom"><i class="fas fa-rocket me-2"></i>Get Started</button>
-                    </div>
-                    <div class="mt-4 d-flex gap-3 small text-muted">
-                        <span><i class="fas fa-check-circle text-primary"></i> 14-day trial</span>
-                        <span><i class="fas fa-shield-alt text-primary"></i> HIPAA | GST Ready</span>
-                    </div>
-                </div>
+               <div class="pe-lg-4">
+    <span class="badge-soft d-inline-block mb-3">
+        <i class="fas fa-capsules me-1"></i> Next-Gen Pharmacy Tech
+    </span>
+
+    <h1 class="display-4 fw-bold mb-3" style="line-height: 1.2;">
+        Pharma ERP – <br>Smart Pharmacy Management System
+    </h1>
+
+    <p class="lead text-secondary mb-4">
+        Manage inventory, billing, purchase, sales, and reports in one powerful system
+    </p>
+
+    <div class="d-flex flex-wrap gap-3 mt-2">
+        <!-- User Login -->
+        <a href="{{ route('login') }}" class="btn btn-gradient px-4 py-2">
+            <i class="fas fa-sign-in-alt me-2"></i>User Login
+        </a>
+
+        <!-- Supplier Login -->
+        <a href="{{ route('supplier.login') }}" class="btn btn-outline-primary px-4 py-2">
+            <i class="fas fa-truck me-2"></i>Supplier Login
+        </a>
+
+        <!-- Get Started -->
+        <button class="btn btn-outline-light-custom">
+            <i class="fas fa-rocket me-2"></i>Get Started
+        </button>
+    </div>
+
+    <div class="mt-4 d-flex gap-3 small text-muted">
+        <span><i class="fas fa-check-circle text-primary"></i> 14-day trial</span>
+        <span><i class="fas fa-shield-alt text-primary"></i> HIPAA | GST Ready</span>
+    </div>
+</div>
             </div>
             <div class="col-lg-6">
                 <div class="hero-illustration p-3 p-lg-4">
