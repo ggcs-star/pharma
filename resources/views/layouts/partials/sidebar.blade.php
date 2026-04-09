@@ -232,6 +232,30 @@
    class="{{ request()->routeIs('customer.ledger') ? 'active' : '' }}">
     <i class="fa fa-user me-2"></i> Customer Ledger
 </a>
+<!-- Logout -->
+<div class="menu-title">
+    <i class="fa fa-sign-out-alt me-1"></i> Session
+</div>
+
+<form method="POST" action="{{ route('logout') }}">
+    @csrf
+    <button type="submit" style="
+        width:100%;
+        background:none;
+        border:none;
+        display:flex;
+        align-items:center;
+        gap:12px;
+        padding:10px 20px;
+        margin:2px 8px;
+        color:#cbd5e1;
+        font-size:0.8rem;
+        border-radius:10px;
+        cursor:pointer;
+    ">
+        <i class="fa fa-sign-out-alt me-2"></i> Logout
+    </button>
+</form>
 </div>
 
  

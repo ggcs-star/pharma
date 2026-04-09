@@ -90,25 +90,30 @@ class CartController extends Controller
     /* ===============================
         CART LIST
     =============================== */
-    public function index()
-    {
-        $cartItems = Cart::with(['item', 'batch'])
-            ->where('user_id', auth()->id())
-            ->get()
-            ->filter(function ($c) {
-                return $c->batch &&
-                       $c->batch->stock > 0 &&
-                       $c->batch->expiry_date > now();
-            })
-            ->map(fn($c) => $this->formatItem($c))
-            ->values();
+ public function index()
+{
+    
+    $cartItems = Cart::with(['item','batch'])
+        ->where('user_id', auth()->id())
+        ->get();
 
-        return response()->json([
-            'status' => true,
-            'items' => $cartItems,
-            'summary' => $this->summary()
-        ]);
+    // 🔥 DEBUG
+    foreach ($cartItems as $c) {
+        if (!$c->item) {
+            dd("ITEM RELATION NULL", $c);
+        }
     }
+
+    $cartItems = $cartItems
+        ->map(fn($c) => $this->formatItem($c))
+        ->values();
+
+    return response()->json([
+        'status' => true,
+        'items' => $cartItems,
+        'summary' => $this->summary()
+    ]);
+}
 
     /* ===============================
         UPDATE QTY
@@ -229,15 +234,19 @@ class CartController extends Controller
     /* ===============================
         FORMAT ITEM (🔥 FINAL FIX)
     =============================== */
-    private function formatItem($c)
+private function formatItem($c)
 {
     $price = $c->batch->mrp ?? 0;
+
+    $image = !empty($c->item->main_image)
+        ? "https://pharma-catalog-assets.s3.us-east-1.amazonaws.com/".$c->item->main_image
+        : asset('no-image.png');
 
     return [
         'id' => $c->id,
         'batch_id' => $c->batch_id,
         'name' => $c->item->name ?? 'Product',
-        'image' => $c->item->main_image_url ?? null,
+        'main_image' => $image,
         'price' => $price,
         'qty' => $c->qty,
         'total_price' => $c->qty * $price,
@@ -245,4 +254,5 @@ class CartController extends Controller
         'expiry' => $c->batch->expiry_date ?? null
     ];
 }
+
 }

@@ -47,6 +47,8 @@ public function place(Request $request)
         // ✅ CREATE ORDER (NO DEFAULT COD)
         $order = Order::create([
             'user_id' => auth()->id(),
+                'address_id' => $request->address_id, // 🔥 ADD THIS
+
             'status' => 'pending',
             'total' => 0,
             'payment_id' => $request->payment_id ?? null,
@@ -128,17 +130,38 @@ public function place(Request $request)
     /* ===============================
         ORDER DETAIL
     =============================== */
-    public function show($id)
-    {
-        $order = Order::with(['items.batch','items.item'])
-            ->where('user_id', auth()->id())
-            ->findOrFail($id);
+ public function show($id)
+{
+    $order = Order::with([
+        'user',
+        'address',
+        'items.batch',
+        'items.item'
+    ])
+    ->where('user_id', auth()->id())
+    ->findOrFail($id);
 
-        return response()->json([
-            'status' => true,
-            'data' => $order
-        ]);
+    // ✅ ADDRESS MAPPING
+    if ($order->address) {
+        $order->address->line1 = $order->address->address_line_1;
+        $order->address->line2 = $order->address->address_line_2;
+        $order->address->mobile = $order->address->phone;
     }
+
+    // ✅ USER MOBILE FIX
+    if ($order->user) {
+        $order->user->mobile =
+            $order->user->mobile
+            ?? $order->user->phone
+            ?? $order->user->mobile_no
+            ?? null;
+    }
+
+    return response()->json([
+        'status' => true,
+        'data' => $order
+    ]);
+}
 
 
     /* ===============================
