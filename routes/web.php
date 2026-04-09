@@ -362,13 +362,13 @@ Route::middleware('auth:supplier')->prefix('supplier')->group(function () {
     Route::get('catalogs/{id}/edit', [SupplierItemCatalogController::class, 'edit'])->name('supplier.catalogs.edit');
     Route::put('catalogs/{id}', [SupplierItemCatalogController::class, 'update'])->name('supplier.catalogs.update');
     Route::delete('catalogs/{id}', [SupplierItemCatalogController::class, 'destroy'])->name('supplier.catalogs.destroy');
-
+    Route::get('supplier/catalogs/{id}/view', [SupplierItemCatalogController::class, 'show'])->name('supplier.catalogs.show');
+    
     Route::get('stocks', [SupplierStockController::class, 'index'])->name('supplier.stocks.index');
     Route::get('stocks/create', [SupplierStockController::class, 'create'])->name('supplier.stocks.create');
     Route::post('stocks', [SupplierStockController::class, 'store'])->name('supplier.stocks.store');
     Route::delete('stocks/{id}', [SupplierStockController::class, 'destroy'])->name('supplier.stocks.destroy');
     Route::get('orders', [SupplierOrderController::class, 'index'])->name('supplier.orders.index');
     Route::get('orders/{id}', [SupplierOrderController::class, 'show'])->name('supplier.orders.show');
-    Route::post('orders/{id}/status', [SupplierOrderController::class, 'updateStatus'])
-    ->name('supplier.orders.status');
+    Route::post('orders/{id}/status', [SupplierOrderController::class, 'updateStatus'])->name('supplier.orders.status');
 });
