@@ -179,7 +179,7 @@ class PurchaseOrderController extends Controller
     | Convert PO → Purchase
     |--------------------------------------------------------------------------
     */
-    public function updateStatus(Request $request, $id)
+public function updateStatus(Request $request, $id)
 {
     DB::beginTransaction();
 
@@ -189,19 +189,54 @@ class PurchaseOrderController extends Controller
         $oldStatus = $po->status;
         $newStatus = $request->status;
 
+        $user = auth()->user();
+
+        /*
+        |------------------------------------------------------------------
+        | 🔐 ROLE BASED FLOW CONTROL
+        |------------------------------------------------------------------
+        */
+
+        // 👉 SUPPLIER FLOW
+        if ($user->role == 'supplier') {
+
+            // supplier ownership check
+            if ($po->supplier_id != $user->id) {
+                abort(403, 'Unauthorized');
+            }
+
+            $allowedTransitions = [
+                'pending' => 'confirmed',
+                'confirmed' => 'processing',
+                'processing' => 'dispatched',
+            ];
+
+            if (!isset($allowedTransitions[$oldStatus]) || $allowedTransitions[$oldStatus] != $newStatus) {
+                throw new \Exception("Invalid status flow (Supplier)");
+            }
+        }
+
+        // 👉 ADMIN FLOW
+        if ($user->role == 'admin') {
+
+            // admin sirf delivered kare
+            if (!($oldStatus == 'dispatched' && $newStatus == 'delivered')) {
+                throw new \Exception("Admin can only mark delivered");
+            }
+        }
+
         // 🔥 UPDATE STATUS
         $po->update([
             'status' => $newStatus
         ]);
 
         /*
-        |--------------------------------------------------------------------------
+        |------------------------------------------------------------------
         | 🔥 AUTO PURCHASE WHEN DELIVERED
-        |--------------------------------------------------------------------------
+        |------------------------------------------------------------------
         */
         if ($oldStatus == 'dispatched' && $newStatus == 'delivered') {
 
-            // 🚨 DUPLICATE CHECK
             if (\App\Models\Purchase::where('purchase_order_id', $po->id)->exists()) {
                 throw new \Exception("Purchase already created for this PO");
             }
@@ -213,7 +248,7 @@ class PurchaseOrderController extends Controller
                 'purchase_order_id' => $po->id,
                 'purchase_date' => now(),
                 'payment_type' => 'Pending',
-                'entry_by' => auth()->id(),
+                'entry_by' => $user->id,
             ]);
 
             $totalAmount = 0;
@@ -222,7 +257,6 @@ class PurchaseOrderController extends Controller
             foreach ($po->items as $poItem) {
 
                 $catalog = \App\Models\SupplierItemCatalog::find($poItem->supplier_item_catalog_id);
-
                 if (!$catalog) continue;
 
                 $qty = $poItem->quantity;
@@ -236,34 +270,31 @@ class PurchaseOrderController extends Controller
                 $totalAmount += $total;
                 $totalGST += $gstAmount;
 
-                // 📦 BATCH
                 $batch = \App\Models\Batch::create([
                     'item_id' => $poItem->item_id,
-'batch_code' => 'BATCH-' . $poItem->item_id . '-' . time(),
+                    'batch_code' => 'BATCH-' . $poItem->item_id . '-' . time(),
                     'expiry_date' => $catalog->expiry_date,
                     'stock' => $totalQty,
-                    'mrp' => $catalog->retailer_mrp,
+'mrp' => $catalog->base_price,
                     'ptr' => $catalog->purchase_price,
                     'selling_price' => $catalog->retailer_price,
-                    'created_by' => auth()->id(),
+                    'created_by' => $user->id,
                 ]);
 
-                // 🧾 PURCHASE ITEM
                 \App\Models\PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'item_id' => $poItem->item_id,
                     'batch_id' => $batch->id,
                     'quantity' => $qty,
                     'free_quantity' => $free,
-                    'mrp' => $catalog->retailer_mrp,
-                    'ptr' => $catalog->purchase_price,
+    'mrp' => $catalog->base_price, // 🔥 FIX
+                    'ptr' => $catalog->retailer_price,
                     'gst_percent' => $catalog->gst_percent,
                     'gst_amount' => $gstAmount,
                     'taxable_amount' => $basic,
                     'total_amount' => $total,
                 ]);
 
-                // 📊 STOCK
                 \App\Models\StockMovement::create([
                     'item_id' => $poItem->item_id,
                     'batch_id' => $batch->id,
@@ -272,12 +303,11 @@ class PurchaseOrderController extends Controller
                     'running_stock' => $batch->stock,
                     'reference_id' => $purchase->id,
                     'reference_type' => 'Purchase',
-                    'user_id' => auth()->id(),
+                    'user_id' => $user->id,
                     'transaction_date' => now(),
                 ]);
             }
 
-            // 💰 TOTAL UPDATE
             $purchase->update([
                 'total_amount' => $totalAmount,
                 'total_gst' => $totalGST,
