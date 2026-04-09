@@ -406,20 +406,33 @@
                         <span style="display: block; font-size: 0.65rem; color: #eab308; margin-top: 4px;">Low stock</span>
                     @endif
                 </td>
-                <td>
-                    <div class="action-buttons">
-                        <a href="{{ route('supplier.catalogs.edit', $c->id) }}" class="btn-action btn-edit">
-                            <i class="fa fa-edit"></i> Edit
-                        </a>
-                        <form action="{{ route('supplier.catalogs.destroy', $c->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this catalog?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn-action btn-delete">
-                                <i class="fa fa-trash"></i> Delete
-                            </button>
-                        </form>
-                    </div>
-                </td>
+             <td>
+    <div class="action-buttons">
+
+        {{-- VIEW --}}
+        <a href="{{ route('supplier.catalogs.show', $c->id) }}" class="btn-action btn-view">
+            <i class="fa fa-eye"></i> View
+        </a>
+
+        {{-- EDIT --}}
+        <a href="{{ route('supplier.catalogs.edit', $c->id) }}" class="btn-action btn-edit">
+            <i class="fa fa-edit"></i> Edit
+        </a>
+
+        {{-- DELETE --}}
+        <form action="{{ route('supplier.catalogs.destroy', $c->id) }}" 
+              method="POST"
+              onsubmit="return confirm('Are you sure you want to delete this catalog?')">
+            @csrf
+            @method('DELETE')
+
+            <button type="submit" class="btn-action btn-delete">
+                <i class="fa fa-trash"></i> Delete
+            </button>
+        </form>
+
+    </div>
+</td>
             </tr>
             @endforeach
         </tbody>
