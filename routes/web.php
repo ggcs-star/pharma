@@ -31,6 +31,8 @@ use App\Http\Controllers\Supplier\Auth\SupplierAuthController;
 use App\Http\Controllers\Supplier\SupplierItemCatalogController;
 use App\Http\Controllers\Supplier\SupplierStockController;
 use App\Http\Controllers\Supplier\SupplierOrderController;
+use App\Http\Controllers\Supplier\SupplierItemController;
+use App\Http\Controllers\Supplier\SupplierDashboardController;
 use Illuminate\Http\Request;
 Route::get('/customer-ledger', [CustomerLedgerController::class, 'index'])->name('customer.ledger');
 
@@ -352,10 +354,9 @@ Route::post('/supplier/login', [SupplierAuthController::class, 'login'])->name('
 
 Route::middleware('auth:supplier')->prefix('supplier')->group(function () {
 
-    Route::get('dashboard', function () {
-        return view('supplier.dashboard');
-    })->name('supplier.dashboard');
-    Route::post('/supplier/logout', [SupplierAuthController::class, 'logout'])->name('supplier.logout');
+    // Route::get('dashboard', function () {return view('supplier.dashboard');})->name('supplier.dashboard');
+    Route::get('dashboard', [SupplierDashboardController::class, 'index'])->name('supplier.dashboard');
+    Route::post('logout', [SupplierAuthController::class, 'logout'])->name('supplier.logout');
     Route::get('catalogs', [SupplierItemCatalogController::class, 'index'])->name('supplier.catalogs.index');
     Route::get('catalogs/create', [SupplierItemCatalogController::class, 'create'])->name('supplier.catalogs.create');
     Route::post('catalogs', [SupplierItemCatalogController::class, 'store'])->name('supplier.catalogs.store');
@@ -371,4 +372,8 @@ Route::middleware('auth:supplier')->prefix('supplier')->group(function () {
     Route::get('orders', [SupplierOrderController::class, 'index'])->name('supplier.orders.index');
     Route::get('orders/{id}', [SupplierOrderController::class, 'show'])->name('supplier.orders.show');
     Route::post('orders/{id}/status', [SupplierOrderController::class, 'updateStatus'])->name('supplier.orders.status');
+    Route::get('/items', [SupplierItemController::class, 'index'])->name('supplier.items.index');
+    Route::get('/items/{id}', [SupplierItemController::class, 'show'])->name('supplier.items.show');
 });
+
+

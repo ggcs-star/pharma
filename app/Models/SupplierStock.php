@@ -14,24 +14,15 @@ class SupplierStock extends Model
         'note'
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | RELATIONS
-    |--------------------------------------------------------------------------
-    */
+   
 
     public function catalog()
     {
         return $this->belongsTo(SupplierItemCatalog::class, 'supplier_item_catalog_id');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | HELPERS
-    |--------------------------------------------------------------------------
-    */
+   
 
-    // 🔥 Check stock type
     public function isPurchase()
     {
         return $this->type === 'purchase';

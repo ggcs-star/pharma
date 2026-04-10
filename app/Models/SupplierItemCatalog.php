@@ -30,11 +30,7 @@ class SupplierItemCatalog extends Model
         'is_active' => 'boolean',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | RELATIONS
-    |--------------------------------------------------------------------------
-    */
+    
 
     public function supplier()
     {
@@ -51,25 +47,35 @@ class SupplierItemCatalog extends Model
         return $this->hasMany(SupplierStock::class);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | HELPERS
-    |--------------------------------------------------------------------------
-    */
 
-    // 🔥 Get real stock (from stock table)
-    public function getRealStockAttribute()
-    {
-        return $this->stocks()->sum('qty');
-    }
+    // public function getRealStockAttribute()
+    // {
+    //     return $this->stocks()->sum('qty');
+    // }
+    public function getTotalPurchaseAttribute()
+{
+    return $this->stocks()
+        ->whereIn('type', ['purchase','inbound'])
+        ->sum('qty');
+}
+public function getTotalSaleAttribute()
+{
+    return $this->stocks()
+        ->whereIn('type', ['sale','outbound'])
+        ->sum('qty');
+}
+public function getRealStockAttribute()
+{
+    return $this->total_purchase - $this->total_sale;
+}
 
-    // 🔥 Check expired
+  
     public function isExpired()
     {
         return $this->expiry_date && $this->expiry_date->isPast();
     }
 
-    // 🔥 Profit
+
     public function getSupplierProfitAttribute()
     {
         return $this->retailer_price - $this->purchase_price;
