@@ -251,7 +251,10 @@ private function formatItem($c)
         'qty' => $c->qty,
         'total_price' => $c->qty * $price,
         'stock' => $c->batch->stock ?? 0,
-        'expiry' => $c->batch->expiry_date ?? null
+        'expiry' => $c->batch->expiry_date ?? null,
+
+        // 🔥 ADD THIS LINE
+        'need_prescription' => $c->item->need_prescription ?? 0
     ];
 }
 

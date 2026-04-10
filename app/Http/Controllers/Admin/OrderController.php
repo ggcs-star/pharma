@@ -11,9 +11,9 @@ class OrderController extends Controller
     // All Orders List
     public function index()
     {
-        $orders = Order::with('user')
-            ->latest()
-            ->get();
+            $orders = Order::with('user')
+                ->latest()
+                ->get();
 
         return view('admin.orders.index', compact('orders'));
     }

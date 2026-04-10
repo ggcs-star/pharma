@@ -20,7 +20,50 @@
             </button>
         </div>
     </div>
+<hr class="my-3">
 
+<div class="card border-0 shadow-sm rounded-4 mb-3">
+    <div class="card-header bg-white border-0 pt-3 pb-0">
+        <h6 class="fw-bold mb-0">
+            <i class="bi bi-shield-lock-fill text-danger me-2"></i>
+            Prescription Settings
+        </h6>
+        <small class="text-muted">Control medicine safety & restrictions</small>
+    </div>
+
+    <div class="card-body">
+
+        <!-- Prescription Required -->
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" 
+                   name="need_prescription" id="needPrescription">
+            <label class="form-check-label fw-semibold" for="needPrescription">
+                Prescription Required (Rx)
+            </label>
+            <div class="text-muted small">
+                User must upload prescription before checkout
+            </div>
+        </div>
+
+        <!-- Not for Online Sale -->
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" 
+                   name="not_for_online_sale" id="notForOnline">
+            <label class="form-check-label fw-semibold" for="notForOnline">
+                Not for Online Sale
+            </label>
+            <div class="text-muted small">
+                Product cannot be purchased online
+            </div>
+        </div>
+
+        <!-- Schedule Auto Logic -->
+        <div class="alert alert-warning py-2 px-3 small mb-0">
+            💡 Tip: Schedule H / H1 medicines usually require prescription
+        </div>
+
+    </div>
+</div>
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>

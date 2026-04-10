@@ -10,6 +10,8 @@ class Purchase extends Model
         'supplier_id',
         'invoice_number',
         'bill_id',
+            'purchase_date', // ✅ ADD THIS
+
         'entry_by',
         'gst',
         'discount',

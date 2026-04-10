@@ -330,4 +330,12 @@ public function updateStatus(Request $request, $id)
             'po_id' => $id
         ]);
     }
+
+    public function show($id)
+{
+    $po = PurchaseOrder::with(['supplier', 'items.item'])->findOrFail($id);
+
+    return view('purchase_orders.show', compact('po'));
+}
+
 }

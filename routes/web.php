@@ -32,6 +32,9 @@ use App\Http\Controllers\Supplier\SupplierItemCatalogController;
 use App\Http\Controllers\Supplier\SupplierStockController;
 use App\Http\Controllers\Supplier\SupplierOrderController;
 use Illuminate\Http\Request;
+Route::get('/search-items', [PurchaseController::class, 'searchItems']);
+Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create']);
+Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
 Route::get('/customer-ledger', [CustomerLedgerController::class, 'index'])->name('customer.ledger');
 
 Route::get('/customer-payment', [CustomerLedgerController::class, 'createPayment'])->name('customer.payment.create');
@@ -187,6 +190,15 @@ Route::get('/api/get-item-stock/{id}', function ($id) {
 | Public Routes
 |--------------------------------------------------------------------------
 */
+Route::prefix('admin')->middleware(['auth'])->group(function () {
+
+    Route::get('/prescriptions', [\App\Http\Controllers\Admin\PrescriptionController::class, 'index'])
+        ->name('admin.prescriptions');
+
+    Route::post('/prescriptions/{id}/update', [\App\Http\Controllers\Admin\PrescriptionController::class, 'update'])
+        ->name('admin.prescription.update');
+
+});
 
 Route::get('/', function () {
     return view('landing');
