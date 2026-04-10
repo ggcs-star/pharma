@@ -318,7 +318,7 @@
             <i class="fa fa-chart-line"></i>
         </div>
         <div class="stat-info">
-            <h4>{{ $catalogs->sum('real_stock') }}</h4>
+            <h4>{{ $catalogs->sum('current_stock') }}</h4>
             <p>Total Stock</p>
         </div>
     </div>
@@ -396,13 +396,13 @@
                     </span>
                 </td>
                 <td>
-                    <span class="badge-stock {{ $isLowStock && $c->real_stock > 0 ? 'low' : ($c->real_stock == 0 ? 'low' : '') }}">
-                        <i class="fa {{ $c->real_stock > 10 ? 'fa-boxes' : 'fa-exclamation-triangle' }}"></i>
-                        {{ $c->real_stock }} units
+                    <span class="badge-stock {{ $isLowStock && $c->current_stock > 0 ? 'low' : ($c->current_stock == 0 ? 'low' : '') }}">
+                        <i class="fa {{ $c->current_stock > 10 ? 'fa-boxes' : 'fa-exclamation-triangle' }}"></i>
+                        {{ $c->current_stock }} units
                     </span>
-                    @if($c->real_stock == 0)
+                    @if($c->current_stock == 0)
                         <span style="display: block; font-size: 0.65rem; color: #ef4444; margin-top: 4px;">Out of stock</span>
-                    @elseif($isLowStock && $c->real_stock > 0)
+                    @elseif($isLowStock && $c->current_stock > 0)
                         <span style="display: block; font-size: 0.65rem; color: #eab308; margin-top: 4px;">Low stock</span>
                     @endif
                 </td>

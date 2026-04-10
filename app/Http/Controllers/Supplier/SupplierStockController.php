@@ -14,7 +14,7 @@ class SupplierStockController extends Controller
     $stocks = SupplierStock::with('catalog.item')
         ->latest()
         ->paginate(10); 
-
+// dd( $stocks);
     return view('supplier.stocks.index', compact('stocks'));
 }
 

@@ -18,21 +18,22 @@ class SupplierItemCatalogController extends Controller
             ->where('supplier_id', auth('supplier')->id())
             ->latest()
             ->get();
-
+// dd($catalogs);  
         return view('supplier.catalogs.index', compact('catalogs'));
     }
-    public function show($id)
-    {
-        $catalog = SupplierItemCatalog::with('item')
-            ->where('supplier_id', auth('supplier')->id())
-            ->findOrFail($id);
+public function show($id)
+{
+    $catalog = SupplierItemCatalog::with(['item','stocks'])
+        ->where('supplier_id', auth('supplier')->id())
+        ->findOrFail($id);
 
-        return view('supplier.catalogs.view', compact('catalog'));
-    }
+    return view('supplier.catalogs.view', compact('catalog'));
+}
 
     public function create()
     {
-        $items = Item::all();
+        $items = Item::with(['packType', 'unit'])->get();
+
         return view('supplier.catalogs.create', compact('items'));
     }
 
@@ -95,8 +96,6 @@ class SupplierItemCatalogController extends Controller
 
     public function update(Request $request, $id)
     {
-        Log::info('UPDATE START', $request->all());
-
         $catalog = SupplierItemCatalog::where('supplier_id', auth('supplier')->id())
             ->findOrFail($id);
 
@@ -118,8 +117,6 @@ class SupplierItemCatalogController extends Controller
 
             $oldStock = $catalog->current_stock ?? 0;
 
-            Log::info('OLD STOCK', ['oldStock' => $oldStock]);
-
             $catalog->update([
                 'item_id' => $request->item_id,
                 'batch_no' => $request->batch_no,
@@ -131,35 +128,34 @@ class SupplierItemCatalogController extends Controller
                 'gst_percent' => $request->gst_percent,
             ]);
 
-            if ($request->has('qty')) {
+            if ($request->filled('qty')) {
 
                 $newStock = (int) $request->qty;
 
-                Log::info('NEW STOCK', ['newStock' => $newStock]);
-
                 if ($newStock != $oldStock) {
 
-                    $difference = $newStock - $oldStock;
+                    $stock = SupplierStock::where('supplier_item_catalog_id', $catalog->id)
+                        ->where('type', 'purchase')
+                        ->first();
 
-                    Log::info('STOCK DIFFERENCE', ['difference' => $difference]);
-
-                    SupplierStock::create([
-                        'supplier_item_catalog_id' => $catalog->id,
-                        'qty' => abs($difference),
-                        'type' => 'purchase',
-                        'note' => 'Stock updated from edit'
-                    ]);
+                    if ($stock) {
+                        $stock->update([
+                            'qty' => $newStock,
+                            'note' => 'Updated from edit'
+                        ]);
+                    } else {
+                        SupplierStock::create([
+                            'supplier_item_catalog_id' => $catalog->id,
+                            'qty' => $newStock,
+                            'type' => 'purchase',
+                            'note' => 'Initial stock from edit'
+                        ]);
+                    }
 
                     $catalog->update([
                         'current_stock' => $newStock
                     ]);
-
-                    Log::info('STOCK UPDATED SUCCESSFULLY');
-                } else {
-                    Log::info('NO STOCK CHANGE');
                 }
-            } else {
-                Log::info('QTY NOT PRESENT IN REQUEST');
             }
 
             DB::commit();
@@ -171,7 +167,9 @@ class SupplierItemCatalogController extends Controller
 
             DB::rollBack();
 
-            Log::error('UPDATE ERROR', ['error' => $e->getMessage()]);
+            Log::error('Catalog update failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return back()->withInput()->with('error', $e->getMessage());
         }

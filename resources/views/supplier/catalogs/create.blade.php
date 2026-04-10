@@ -150,6 +150,13 @@
         background: white;
     }
 
+    .form-control-custom[readonly] {
+        background: #f8fafc;
+        color: #475569;
+        border-color: #e2e8f0;
+        cursor: default;
+    }
+
     /* Error state styles */
     .form-control-custom.is-invalid {
         border-color: #ef4444;
@@ -182,11 +189,33 @@
         background-position: right 16px center;
     }
 
-    /* Price Row (inline fields) */
-    .price-row {
+    /* Info Row for Pack Details */
+    .info-row {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin-top: 16px;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 16px;
+    }
+
+    .info-item {
+        text-align: center;
+    }
+
+    .info-item-label {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+
+    .info-item-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #0f172a;
     }
 
     /* Helper Text */
@@ -194,6 +223,39 @@
         font-size: 0.7rem;
         color: #94a3b8;
         margin-top: 4px;
+    }
+
+    /* Price Preview */
+    .price-preview {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 20px;
+    }
+
+    .price-preview-grid {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .price-preview-item {
+        text-align: center;
+        flex: 1;
+        min-width: 100px;
+    }
+
+    .price-preview-label {
+        font-size: 0.7rem;
+        color: #64748b;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .price-preview-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
     }
 
     /* Form Actions */
@@ -246,7 +308,7 @@
         color: #0f172a;
     }
 
-    /* Alert/Error Styles */
+    /* Alert Styles */
     .alert-danger-custom {
         background: #fef2f2;
         border-left: 4px solid #ef4444;
@@ -262,7 +324,6 @@
         font-size: 0.85rem;
     }
 
-    /* Success Message */
     .alert-success-custom {
         background: #ecfdf5;
         border-left: 4px solid #10b981;
@@ -296,9 +357,9 @@
             grid-column: span 1;
         }
 
-        .price-row {
+        .info-row {
             grid-template-columns: 1fr;
-            gap: 16px;
+            gap: 12px;
         }
 
         .form-actions {
@@ -308,6 +369,22 @@
 
         .btn-save, .btn-reset {
             justify-content: center;
+        }
+
+        .price-preview-grid {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .price-preview-item {
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price-preview-label {
+            margin-bottom: 0;
         }
     }
 
@@ -378,11 +455,15 @@
                         <i class="fa fa-capsules"></i>
                         Select Item <span class="required">*</span>
                     </label>
-                    <select name="item_id" class="form-control-custom @error('item_id') is-invalid @enderror" required>
+                    <select name="item_id" id="itemSelect" class="form-control-custom @error('item_id') is-invalid @enderror" required>
                         <option value="">-- Choose an item --</option>
                         @foreach($items as $item)
-                            <option value="{{ $item->id }}" {{ old('item_id') == $item->id ? 'selected' : '' }}>
-                                {{ $item->name }} @if($item->generic_name) ({{ $item->generic_name }}) @endif
+                            <option value="{{ $item->id }}" 
+                                    data-pack="{{ $item->packType->name ?? '' }}"
+                                    data-unit="{{ $item->unit->name ?? '' }}"
+                                    data-units="{{ $item->number_of_units ?? '' }}"
+                                    {{ old('item_id') == $item->id ? 'selected' : '' }}>
+                                {{ $item->name }}
                             </option>
                         @endforeach
                     </select>
@@ -392,6 +473,28 @@
                         </div>
                     @enderror
                     <div class="helper-text">Select the product from the list</div>
+                </div>
+            </div>
+
+            <!-- Pack Details Info Row -->
+            <div class="info-row" id="packInfoRow" style="display: none;">
+                <div class="info-item">
+                    <div class="info-item-label">
+                        <i class="fa fa-box"></i> Pack Type
+                    </div>
+                    <div class="info-item-value" id="packType">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-item-label">
+                        <i class="fa fa-balance-scale"></i> Unit
+                    </div>
+                    <div class="info-item-value" id="unit">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-item-label">
+                        <i class="fa fa-calculator"></i> No. of Units
+                    </div>
+                    <div class="info-item-value" id="numberOfUnits">-</div>
                 </div>
             </div>
         </div>
@@ -460,7 +563,7 @@
                             <i class="fa fa-exclamation-circle"></i> {{ $message }}
                         </div>
                     @enderror
-                    <div class="helper-text">Number of units available</div>
+                    <div class="helper-text" id="unitHelpText">Select an item to see unit details</div>
                 </div>
             </div>
         </div>
@@ -576,31 +679,29 @@
                     <div class="helper-text">Standard GST rate (0%, 5%, 12%, 18%, 28%)</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Preview Section -->
-        <div class="form-section" id="previewSection" style="display: none;">
-            <div class="section-title">
-                <i class="fa fa-eye"></i>
-                Price Preview
-            </div>
-            <div class="price-preview" style="background: #f8fafc; border-radius: 16px; padding: 20px;">
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
-                    <div>
-                        <span style="font-size: 0.7rem; color: #64748b;">Purchase Price</span>
-                        <div><strong id="previewPurchase">₹0.00</strong></div>
+            <!-- Price Preview Section -->
+            <div class="price-preview" id="pricePreview" style="margin-top: 20px; display: none;">
+                <div class="price-preview-grid">
+                    <div class="price-preview-item">
+                        <span class="price-preview-label">Purchase Price</span>
+                        <div class="price-preview-value" id="previewPurchase">₹0.00</div>
                     </div>
-                    <div>
-                        <span style="font-size: 0.7rem; color: #64748b;">Retailer Price</span>
-                        <div><strong id="previewRetailer">₹0.00</strong></div>
+                    <div class="price-preview-item">
+                        <span class="price-preview-label">Retailer Price</span>
+                        <div class="price-preview-value" id="previewRetailer">₹0.00</div>
                     </div>
-                    <div>
-                        <span style="font-size: 0.7rem; color: #64748b;">MRP</span>
-                        <div><strong id="previewMrp">₹0.00</strong></div>
+                    <div class="price-preview-item">
+                        <span class="price-preview-label">MRP</span>
+                        <div class="price-preview-value" id="previewMrp">₹0.00</div>
                     </div>
-                    <div>
-                        <span style="font-size: 0.7rem; color: #64748b;">Margin</span>
-                        <div><strong id="previewMargin" style="color: #10b981;">0%</strong></div>
+                    <div class="price-preview-item">
+                        <span class="price-preview-label">Margin</span>
+                        <div class="price-preview-value" id="previewMargin" style="color: #10b981;">0%</div>
+                    </div>
+                    <div class="price-preview-item">
+                        <span class="price-preview-label">Discount to MRP</span>
+                        <div class="price-preview-value" id="previewDiscount">0%</div>
                     </div>
                 </div>
             </div>
@@ -619,13 +720,47 @@
 </div>
 
 <script>
-    // Auto-calculate margin preview
+    // Get DOM elements
+    const itemSelect = document.getElementById('itemSelect');
+    const packTypeEl = document.getElementById('packType');
+    const unitEl = document.getElementById('unit');
+    const numberOfUnitsEl = document.getElementById('numberOfUnits');
+    const packInfoRow = document.getElementById('packInfoRow');
+    const unitHelpText = document.getElementById('unitHelpText');
+    
     const purchaseInput = document.querySelector('input[name="purchase_price"]');
     const retailerInput = document.querySelector('input[name="retailer_price"]');
     const mrpInput = document.querySelector('input[name="retailer_mrp"]');
-    const previewSection = document.getElementById('previewSection');
+    const pricePreview = document.getElementById('pricePreview');
 
-    function updatePreview() {
+    // Update pack info when item is selected
+    function updatePackInfo() {
+        const selectedOption = itemSelect.options[itemSelect.selectedIndex];
+        
+        if (selectedOption && selectedOption.value) {
+            const pack = selectedOption.dataset.pack || '';
+            const unit = selectedOption.dataset.unit || '';
+            const units = selectedOption.dataset.units || '';
+            
+            packTypeEl.textContent = pack || '-';
+            unitEl.textContent = unit || '-';
+            numberOfUnitsEl.textContent = units || '-';
+            packInfoRow.style.display = 'grid';
+            
+            // Update helper text
+            if (pack && unit && units) {
+                unitHelpText.innerHTML = `<i class="fa fa-info-circle"></i> 1 ${pack} = ${units} ${unit}`;
+            } else {
+                unitHelpText.innerHTML = 'Unit details not available for this item';
+            }
+        } else {
+            packInfoRow.style.display = 'none';
+            unitHelpText.innerHTML = 'Select an item to see unit details';
+        }
+    }
+
+    // Update price preview
+    function updatePricePreview() {
         const purchase = parseFloat(purchaseInput?.value) || 0;
         const retailer = parseFloat(retailerInput?.value) || 0;
         const mrp = parseFloat(mrpInput?.value) || 0;
@@ -635,9 +770,9 @@
         document.getElementById('previewMrp').innerHTML = `₹${mrp.toFixed(2)}`;
 
         // Calculate margin percentage
+        const marginElement = document.getElementById('previewMargin');
         if (purchase > 0 && retailer > 0) {
             const margin = ((retailer - purchase) / purchase) * 100;
-            const marginElement = document.getElementById('previewMargin');
             marginElement.innerHTML = `${margin.toFixed(1)}%`;
             if (margin < 0) {
                 marginElement.style.color = '#ef4444';
@@ -647,34 +782,54 @@
                 marginElement.style.color = '#10b981';
             }
         } else {
-            document.getElementById('previewMargin').innerHTML = '0%';
+            marginElement.innerHTML = '0%';
+            marginElement.style.color = '#64748b';
         }
 
-        // Show preview if any price is entered
-        if (purchase > 0 || retailer > 0 || mrp > 0) {
-            previewSection.style.display = 'block';
+        // Calculate discount to MRP
+        const discountElement = document.getElementById('previewDiscount');
+        if (mrp > 0 && retailer > 0) {
+            const discount = ((mrp - retailer) / mrp) * 100;
+            discountElement.innerHTML = `${discount.toFixed(1)}%`;
+            discountElement.style.color = discount < 0 ? '#ef4444' : '#10b981';
+        } else if (mrp > 0 && retailer === 0) {
+            discountElement.innerHTML = '100%';
+            discountElement.style.color = '#10b981';
         } else {
-            previewSection.style.display = 'none';
+            discountElement.innerHTML = '0%';
+            discountElement.style.color = '#64748b';
+        }
+
+        // Show/hide price preview
+        if (purchase > 0 || retailer > 0 || mrp > 0) {
+            pricePreview.style.display = 'block';
+        } else {
+            pricePreview.style.display = 'none';
         }
     }
 
-    // Add event listeners
-    if (purchaseInput) purchaseInput.addEventListener('input', updatePreview);
-    if (retailerInput) retailerInput.addEventListener('input', updatePreview);
-    if (mrpInput) mrpInput.addEventListener('input', updatePreview);
-
-    // Reset function
+    // Reset form function
     function resetForm() {
         document.getElementById('catalogForm').reset();
-        setTimeout(updatePreview, 100);
-        // Clear validation error styles on reset
+        setTimeout(() => {
+            updatePackInfo();
+            updatePricePreview();
+        }, 100);
+        
+        // Clear validation error styles
         document.querySelectorAll('.is-invalid').forEach(el => {
             el.classList.remove('is-invalid');
         });
     }
 
-    // Initial preview update
-    updatePreview();
+    // Event listeners
+    if (itemSelect) {
+        itemSelect.addEventListener('change', updatePackInfo);
+    }
+    
+    if (purchaseInput) purchaseInput.addEventListener('input', updatePricePreview);
+    if (retailerInput) retailerInput.addEventListener('input', updatePricePreview);
+    if (mrpInput) mrpInput.addEventListener('input', updatePricePreview);
 
     // GST quick select helper
     const gstInput = document.querySelector('input[name="gst_percent"]');
@@ -684,12 +839,26 @@
         });
     }
 
-    // Remove is-invalid class on input focus to clear error styling
+    // Remove is-invalid class on input focus
     document.querySelectorAll('.form-control-custom').forEach(input => {
         input.addEventListener('focus', function() {
             this.classList.remove('is-invalid');
         });
     });
+
+    // Initial updates
+    updatePackInfo();
+    updatePricePreview();
+
+    // If there's an old value for item_id, trigger the update
+    @if(old('item_id'))
+        setTimeout(() => {
+            if (itemSelect) {
+                itemSelect.value = "{{ old('item_id') }}";
+                updatePackInfo();
+            }
+        }, 100);
+    @endif
 </script>
 
 @endsection
