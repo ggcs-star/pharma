@@ -238,7 +238,7 @@
         transition: background 0.2s ease;
     }
 
-    /* Type Badges */
+    /* Type Badges - Updated to handle purchase/sale types */
     .badge-type {
         display: inline-flex;
         align-items: center;
@@ -251,12 +251,12 @@
         letter-spacing: 0.5px;
     }
 
-    .badge-inbound {
+    .badge-purchase, .badge-inbound {
         background: #dcfce7;
         color: #15803d;
     }
 
-    .badge-outbound {
+    .badge-sale, .badge-outbound {
         background: #fee2e2;
         color: #b91c1c;
     }
@@ -420,7 +420,6 @@
             padding: 12px 16px;
         }
 
-        /* Make table horizontally scrollable on mobile */
         .table-container {
             overflow-x: auto;
         }
@@ -484,7 +483,7 @@
             <i class="fa fa-arrow-down"></i>
         </div>
         <div class="stat-info">
-            <h4>{{ $stocks->where('type', 'inbound')->sum('qty') }}</h4>
+            <h4>{{ $stocks->where('type', 'purchase')->sum('qty') + $stocks->where('type', 'inbound')->sum('qty') }}</h4>
             <p>Stock In</p>
         </div>
     </div>
@@ -493,7 +492,7 @@
             <i class="fa fa-arrow-up"></i>
         </div>
         <div class="stat-info">
-            <h4>{{ $stocks->where('type', 'outbound')->sum('qty') }}</h4>
+            <h4>{{ $stocks->where('type', 'sale')->sum('qty') + $stocks->where('type', 'outbound')->sum('qty') }}</h4>
             <p>Stock Out</p>
         </div>
     </div>
@@ -502,7 +501,10 @@
             <i class="fa fa-cubes"></i>
         </div>
         <div class="stat-info">
-            <h4>{{ $stocks->where('type', 'inbound')->sum('qty') - $stocks->where('type', 'outbound')->sum('qty') }}</h4>
+            <h4>
+                {{ ($stocks->where('type', 'purchase')->sum('qty') + $stocks->where('type', 'inbound')->sum('qty')) - 
+                   ($stocks->where('type', 'sale')->sum('qty') + $stocks->where('type', 'outbound')->sum('qty')) }}
+            </h4>
             <p>Net Balance</p>
         </div>
     </div>
@@ -514,8 +516,10 @@
         <label><i class="fa fa-filter"></i> Stock Type</label>
         <select id="typeFilter">
             <option value="all">All Transactions</option>
-            <option value="inbound">Stock In (Purchase)</option>
-            <option value="outbound">Stock Out (Sale)</option>
+            <option value="purchase">Purchase (Stock In)</option>
+            <option value="sale">Sale (Stock Out)</option>
+            <option value="inbound">Stock In (Other)</option>
+            <option value="outbound">Stock Out (Other)</option>
             <option value="adjustment">Adjustment</option>
         </select>
     </div>
@@ -557,6 +561,35 @@
         </thead>
         <tbody id="stockTableBody">
             @foreach($stocks as $s)
+            @php
+                // Map type for display
+                $displayType = $s->type;
+                $isInbound = in_array($s->type, ['purchase', 'inbound']);
+                $isOutbound = in_array($s->type, ['sale', 'outbound']);
+                
+                // Badge class based on type
+                if ($s->type == 'purchase') {
+                    $badgeClass = 'badge-purchase';
+                    $badgeIcon = 'fa-arrow-down';
+                    $badgeText = 'Purchase';
+                } elseif ($s->type == 'sale') {
+                    $badgeClass = 'badge-sale';
+                    $badgeIcon = 'fa-arrow-up';
+                    $badgeText = 'Sale';
+                } elseif ($s->type == 'inbound') {
+                    $badgeClass = 'badge-inbound';
+                    $badgeIcon = 'fa-arrow-down';
+                    $badgeText = 'Stock In';
+                } elseif ($s->type == 'outbound') {
+                    $badgeClass = 'badge-outbound';
+                    $badgeIcon = 'fa-arrow-up';
+                    $badgeText = 'Stock Out';
+                } else {
+                    $badgeClass = 'badge-adjustment';
+                    $badgeIcon = 'fa-edit';
+                    $badgeText = ucfirst($s->type);
+                }
+            @endphp
             <tr data-type="{{ $s->type }}" data-date="{{ $s->created_at }}" data-search="{{ strtolower($s->catalog->item->name ?? '') }} {{ strtolower($s->catalog->batch_no ?? '') }}">
                 <td>
                     <strong style="color: #0f172a;">{{ $s->catalog->item->name ?? 'N/A' }}</strong>
@@ -572,36 +605,29 @@
                     </span>
                 </td>
                 <td>
-                    <span class="qty-{{ $s->type == 'inbound' ? 'positive' : ($s->type == 'outbound' ? 'negative' : 'neutral') }}">
-                        {{ $s->type == 'inbound' ? '+' : ($s->type == 'outbound' ? '-' : '') }}{{ $s->qty }}
+                    <span class="{{ $isInbound ? 'qty-positive' : ($isOutbound ? 'qty-negative' : 'qty-neutral') }}">
+                        {{ $isInbound ? '+' : ($isOutbound ? '-' : '') }}{{ $s->qty }}
                     </span>
                     <div style="font-size: 0.65rem; color: #94a3b8; margin-top: 4px;">
                         @if($s->reference_type)
                             Ref: {{ $s->reference_type }} #{{ $s->reference_id }}
                         @endif
+                        @if($s->note)
+                            <br>Note: {{ $s->note }}
+                        @endif
                     </div>
                  </td>
                 <td>
-                    @if($s->type == 'inbound')
-                        <span class="badge-type badge-inbound">
-                            <i class="fa fa-arrow-down"></i> Stock In
-                        </span>
-                    @elseif($s->type == 'outbound')
-                        <span class="badge-type badge-outbound">
-                            <i class="fa fa-arrow-up"></i> Stock Out
-                        </span>
-                    @else
-                        <span class="badge-type badge-adjustment">
-                            <i class="fa fa-edit"></i> Adjustment
-                        </span>
-                    @endif
+                    <span class="badge-type {{ $badgeClass }}">
+                        <i class="fa {{ $badgeIcon }}"></i> {{ $badgeText }}
+                    </span>
                  </td>
                 <td>
                     <div class="date-cell">
-                        <i class="fa fa-calendar-alt"></i> {{ $s->created_at->format('d M, Y') }}
+                        <i class="fa fa-calendar-alt"></i> {{ \Carbon\Carbon::parse($s->created_at)->format('d M, Y') }}
                     </div>
                     <div style="font-size: 0.65rem; color: #94a3b8; margin-top: 4px;">
-                        <i class="fa fa-clock"></i> {{ $s->created_at->format('h:i A') }}
+                        <i class="fa fa-clock"></i> {{ \Carbon\Carbon::parse($s->created_at)->format('h:i A') }}
                     </div>
                  </td>
                 <td>
@@ -693,14 +719,17 @@
     }
     
     // Add event listeners for real-time search
-    document.getElementById('searchInput').addEventListener('keyup', function(e) {
-        if (e.key === 'Enter') applyFilters();
-    });
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') applyFilters();
+        });
+    }
     
-    // Export functionality (optional)
+    // Export functionality
     function exportToCSV() {
         const rows = document.querySelectorAll('#stockTableBody tr:visible');
-        let csv = "Item,Batch,Quantity,Type,Date\n";
+        let csv = "Item,Batch,Quantity,Type,Date,Note\n";
         
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');

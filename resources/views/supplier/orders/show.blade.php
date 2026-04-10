@@ -190,7 +190,7 @@
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill">
-                                    {{ optional($row->catalog)->real_stock ?? 0 }}
+                                    {{ optional($row->catalog)->current_stock ?? 0 }}
                                 </span>
                             </td>
                             <td class="text-end">₹{{ number_format(optional($row->catalog)->purchase_price ?? 0, 2) }}</td>

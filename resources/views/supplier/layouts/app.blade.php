@@ -16,7 +16,7 @@
         
         /* Top Navbar Styles - Modern Dark */
         .top-navbar {
-            background: #0f172a;
+            background: #f0f2f6;
             padding: 0.75rem 1.5rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             position: sticky;
@@ -41,7 +41,7 @@
         }
         
         .user-name {
-            color: #e2e8f0;
+            color: #000205;
             font-size: 0.9rem;
             font-weight: 500;
             background: rgba(255,255,255,0.08);

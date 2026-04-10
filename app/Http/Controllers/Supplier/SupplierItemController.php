@@ -1,88 +1,44 @@
 <?php
+
 namespace App\Http\Controllers\Supplier;
 
 use App\Http\Controllers\Controller;
-use App\Models\SupplierItem;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Models\Item;
 
 class SupplierItemController extends Controller
 {
+
     public function index()
-    {
-        $items = SupplierItem::where('supplier_id', auth('supplier')->id())->latest()->get();
-        return view('supplier.items.index', compact('items'));
-    }
+{
+    $supplierId = auth('supplier')->id();
 
-    public function create()
-    {
-        return view('supplier.items.create');
-    }
+    $items = Item::with(['category','subCategory','manufacturer'])
+    ->whereHas('catalogs', function ($q) use ($supplierId) {
+        $q->where('supplier_id', $supplierId);
+    })
+    ->latest()
+    ->paginate(10);
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required',
-            'selling_price' => 'required|numeric',
-            'main_image' => 'nullable|image'
-        ]);
+    return view('supplier.item.index', compact('items'));
+}
 
-        $data = $request->all();
-        $data['supplier_id'] = auth('supplier')->id();
-        $data['slug'] = Str::slug($request->name);
+   
+   public function show($id)
+{
+    $supplierId = auth('supplier')->id();
 
-        // Image upload
-        if ($request->hasFile('main_image')) {
-            $data['main_image'] = $request->file('main_image')->store('supplier_items', 'public');
+    $item = Item::with([
+        'category',
+        'subCategory',
+        'manufacturer',
+        'packType',
+        'unit',
+        'catalogs' => function ($q) use ($supplierId) {
+            $q->where('supplier_id', $supplierId)->with('stocks');
         }
+    ])->findOrFail($id);
+// dd($item->catalogs);
+    return view('supplier.item.show', compact('item'));
+}
 
-        SupplierItem::create($data);
-
-        return redirect()->route('supplier.items.index')->with('success', 'Item created');
-    }
-
-    public function edit($id)
-    {
-        $item = SupplierItem::where('supplier_id', auth('supplier')->id())->findOrFail($id);
-        return view('supplier.items.edit', compact('item'));
-    }
-
-    public function update(Request $request, $id)
-    {
-        $item = SupplierItem::where('supplier_id', auth('supplier')->id())->findOrFail($id);
-
-        $request->validate([
-            'name' => 'required',
-            'selling_price' => 'required|numeric',
-        ]);
-
-        $data = $request->all();
-        $data['slug'] = Str::slug($request->name);
-
-        if ($request->hasFile('main_image')) {
-            if ($item->main_image) {
-                Storage::disk('public')->delete($item->main_image);
-            }
-
-            $data['main_image'] = $request->file('main_image')->store('supplier_items', 'public');
-        }
-
-        $item->update($data);
-
-        return redirect()->route('supplier.items.index')->with('success', 'Item updated');
-    }
-
-    public function destroy($id)
-    {
-        $item = SupplierItem::where('supplier_id', auth('supplier')->id())->findOrFail($id);
-
-        if ($item->main_image) {
-            Storage::disk('public')->delete($item->main_image);
-        }
-
-        $item->delete();
-
-        return back()->with('success', 'Item deleted');
-    }
 }
