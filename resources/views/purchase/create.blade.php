@@ -16,7 +16,7 @@
                 <div class="text-end">
                     <div class="bg-white-20 rounded-3 px-3 py-2">
                         <i class="fas fa-calendar-alt me-1"></i>
-                        <span class="small">{{ date('d-m-Y') }}</span>
+<span class="small" id="displayPurchaseDate">{{ date('d-m-Y') }}</span>
                     </div>
                 </div>
             </div>
@@ -37,7 +37,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">
-                            <i class="fas fa-calendar-day text-primary me-1"></i> Invoice Date <span class="text-danger">*</span>
+                            <i class="fas fa-calendar-day text-primary me-1"></i> Purchase Date <span class="text-danger">*</span>
                         </label>
                         <input type="date" name="purchase_date" id="purchase_date" class="form-control form-control-lg" 
                                value="{{ date('Y-m-d') }}" required>

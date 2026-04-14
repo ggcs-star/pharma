@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\Users\CategoryController;
 use App\Http\Controllers\Api\Users\CartController;
 use App\Http\Controllers\Api\Users\OrderController;
     use App\Http\Controllers\Api\Users\AddressController;
+    use App\Http\Controllers\Api\Users\PrescriptionController;
+
 
 Route::get('/test', function () {
     return "API WORKING";
@@ -75,6 +77,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/cancel/{id}', [OrderController::class, 'cancel']);
     });
 
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/prescription/upload', [PrescriptionController::class, 'upload']);
+
+    Route::get('/prescription/check', [PrescriptionController::class, 'check']);
+
+    Route::get('/prescription/my', [PrescriptionController::class, 'myPrescriptions']);
+
+    Route::delete('/prescription/{id}', [PrescriptionController::class, 'delete']);
+
+});
 /* ---------- ADDRESS ---------- */
 Route::prefix('addresses')->group(function () {
 

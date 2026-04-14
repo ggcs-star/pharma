@@ -28,9 +28,12 @@
 
     <div class="col-md-3">
         <label>Date</label>
-        <input type="date" name="purchase_date"
-        value="{{ $purchase->purchase_date }}" class="form-control">
-    </div>
+        <!-- <input type="date" name="purchase_date" -->
+<input type="date" name="purchase_date"
+value="{{ $purchase->purchase_date 
+    ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') 
+    : $purchase->created_at->format('Y-m-d') }}"
+class="form-control">    </div>
 
     <div class="col-md-4">
         <label>Supplier</label>
@@ -208,8 +211,17 @@ let row=document.querySelectorAll("#purchaseTable tbody tr")[index];
 row.querySelector('.itemSelect').value=item.item_id;
 row.querySelector('.qty').value=item.quantity;
 row.querySelector('.freeQty').value=item.free_quantity;
-row.querySelector('.batchNumber').value=item.batch.batch_code;
-row.querySelector('.expiryDate').value=item.batch.expiry_date;
+// SAFE batch
+row.querySelector('.batchNumber').value = item.batch?.batch_code ?? '';
+
+// FIX expiry format
+let expiry = item.batch?.expiry_date ?? '';
+
+if(expiry){
+    expiry = expiry.split('T')[0]; // 🔥 MAIN FIX
+}
+
+row.querySelector('.expiryDate').value = expiry;
 row.querySelector('.mrp').value=item.mrp;
 row.querySelector('.rate').value=item.ptr;
 row.querySelector('.gst').value=item.gst_percent;

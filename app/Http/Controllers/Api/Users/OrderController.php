@@ -33,28 +33,49 @@ public function place(Request $request)
         // DEBUG (temporary)
         \Log::info($request->all());
 
-        $cartItems = Cart::with(['batch'])
-            ->where('user_id', auth()->id())
+$cartItems = Cart::with(['batch', 'item']) // 🔥 ADD item            ->where('user_id', auth()->id())
             ->lockForUpdate()
             ->get();
+$requiresPrescription = $cartItems->contains(function($c){
+    return optional($c->item)->need_prescription == 1;
+});
 
+if ($requiresPrescription && !$request->prescription_id) {
+    throw new \Exception('Prescription required');
+}
+
+if ($cartItems->isEmpty()) {
+    throw new \Exception('Cart is empty');
+}
+if ($requiresPrescription && !$request->prescription_id) {
+    throw new \Exception('Prescription required');
+}
         if ($cartItems->isEmpty()) {
             throw new \Exception('Cart is empty');
         }
 
         $total = 0;
+// 🔥 VALIDATE PRESCRIPTION BELONGS TO USER
+if ($request->prescription_id) {
+    $prescription = \App\Models\Prescription::where('id', $request->prescription_id)
+        ->where('user_id', auth()->id())
+        ->first();
 
+    if (!$prescription) {
+        throw new \Exception('Invalid prescription');
+    }
+}
         // ✅ CREATE ORDER (NO DEFAULT COD)
-        $order = Order::create([
-            'user_id' => auth()->id(),
-                'address_id' => $request->address_id, // 🔥 ADD THIS
-
-            'status' => 'pending',
-            'total' => 0,
-            'payment_id' => $request->payment_id ?? null,
-            'payment_mode' => $request->payment_mode, // 🔥 FIXED
-            'payment_status' => $request->payment_mode == 'razorpay' ? 'paid' : 'pending'
-        ]);
+      $order = Order::create([
+    'user_id' => auth()->id(),
+    'address_id' => $request->address_id,
+    'prescription_id' => $request->prescription_id, // 🔥 ADD THIS
+    'status' => 'pending_approval', // 🔥 CHANGE THIS
+    'total' => 0,
+    'payment_id' => $request->payment_id ?? null,
+    'payment_mode' => $request->payment_mode,
+    'payment_status' => $request->payment_mode == 'razorpay' ? 'paid' : 'pending'
+]);
 
         foreach ($cartItems as $cart) {
 
@@ -84,11 +105,11 @@ public function place(Request $request)
             $total += $lineTotal;
         }
 
-        // ✅ FINAL UPDATE
-        $order->update([
-            'total' => $total,
-            'status' => $request->payment_mode == 'razorpay' ? 'confirmed' : 'pending'
-        ]);
+        
+$order->update([
+    'total' => $total,
+    'status' => 'pending_approval' // 🔥 ALWAYS THIS
+]);    
 
         Cart::where('user_id', auth()->id())->delete();
 
@@ -178,7 +199,7 @@ public function place(Request $request)
                 ->lockForUpdate()
                 ->findOrFail($id);
 
-            if ($order->status !== 'pending') {
+            if (!in_array($order->status, ['pending', 'pending_approval'])) {
                 throw new \Exception('Only pending orders can be cancelled');
             }
 

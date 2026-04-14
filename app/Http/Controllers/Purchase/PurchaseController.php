@@ -64,11 +64,11 @@ public function index(Request $request)
     
     // Filter by date range
 if ($request->filled('from_date')) {
-    $query->where('created_at', '>=', $request->from_date . ' 00:00:00');
+    $query->whereDate('purchase_date', '>=', $request->from_date);
 }
 
 if ($request->filled('to_date')) {
-    $query->where('created_at', '<=', $request->to_date . ' 23:59:59');
+    $query->whereDate('purchase_date', '<=', $request->to_date);
 }
     
     // Calculate summary statistics
@@ -137,8 +137,9 @@ public function store(Request $request)
         'items.*.quantity' => 'required|numeric|min:0.01',
         'items.*.free_quantity' => 'nullable|numeric|min:0',
         'items.*.batch_number' => 'required|string|max:255',
-        'items.*.expiry_date' => 'required|date|after:today',
-        'items.*.purchase_rate' => 'required|numeric|min:0',
+'items.*.expiry_date' => 'required|date|after_or_equal:today', 
+       'items.*.purchase_rate' => 'required|numeric|min:0',
+
         'items.*.mrp' => 'required|numeric|min:0',
 
         'items.*.gst_percent' => 'nullable|numeric|min:0|max:100',
@@ -170,7 +171,7 @@ public function store(Request $request)
         $purchase = Purchase::create([
             'supplier_id' => $request->supplier_id,
             'invoice_number' => $request->invoice_number,
-            'purchase_date' => $request->purchase_date,
+'purchase_date' => $request->purchase_date ?? now(),
             'payment_type' => $request->payment_type ?? 'Pending',
             'entry_by' => auth()->id(),
             'total_amount' => 0,
@@ -284,7 +285,7 @@ public function store(Request $request)
                 'reference_type' => 'Purchase',
                 'user_id' => auth()->id(),
                 'remarks' => "Purchase #{$purchase->invoice_number} - {$batchCode}",
-                'transaction_date' => now(),
+'transaction_date' => $request->purchase_date ?? now(),
             ]);
         }
 
@@ -312,7 +313,7 @@ public function store(Request $request)
             'debit' => $net,
             'credit' => 0,
             'balance_after' => $lastBalance + $net,
-            'transaction_date' => now(),
+'transaction_date' => $request->purchase_date ?? now(),
             'entry_by' => auth()->id(),
             'remarks' => "Purchase #{$request->invoice_number}",
         ]);
@@ -452,7 +453,9 @@ public function update(Request $request, $id)
 
         $purchase->update([
             'supplier_id' => $request->supplier_id,
-            'purchase_date' => $request->purchase_date,
+'purchase_date' => $request->purchase_date ?? $purchase->purchase_date,
+                'payment_type' => $request->payment_type, // 🔥 ADD THIS
+
             'total_amount' => $totalAmount,
             'total_gst' => $totalGST,
             'net_amount' => $totalAmount,
@@ -538,8 +541,7 @@ public function edit($id)
     'reference_type' => 'PurchaseDelete',
     'user_id' => auth()->id(),
     'remarks' => 'Stock reversed due to purchase deletion',
-    'transaction_date' => now()
-]);
+'transaction_date' => $purchase->purchase_date ?? now()]);
                 }
             }
 
@@ -573,4 +575,17 @@ public function edit($id)
             return back()->with('error', 'Failed to delete purchase: ' . $e->getMessage());
         }
     }
+    public function searchItems(Request $request)
+{
+    $search = $request->q;
+
+    $items = Item::query()
+        ->when($search, function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%");
+        })
+        ->limit(20) // 🔥 only 20 items
+        ->get(['id', 'name']);
+
+    return response()->json($items);
+}
 }
