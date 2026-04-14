@@ -33,9 +33,10 @@ public function place(Request $request)
         // DEBUG (temporary)
         \Log::info($request->all());
 
-$cartItems = Cart::with(['batch', 'item']) // 🔥 ADD item            ->where('user_id', auth()->id())
-            ->lockForUpdate()
-            ->get();
+$cartItems = Cart::with(['batch', 'item'])
+    ->where('user_id', auth()->id()) // 🔥 FIX
+    ->lockForUpdate()
+    ->get();
 $requiresPrescription = $cartItems->contains(function($c){
     return optional($c->item)->need_prescription == 1;
 });

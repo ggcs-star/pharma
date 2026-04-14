@@ -9,14 +9,37 @@ use Illuminate\Http\Request; // ✅ FIX
 class OrderController extends Controller
 {
     // All Orders List
-    public function index()
-    {
-            $orders = Order::with('user')
-                ->latest()
-                ->get();
+public function index(Request $request)
+{
+    $query = Order::with('user');
 
-        return view('admin.orders.index', compact('orders'));
+    // 📅 Date Filter
+    if ($request->from_date) {
+        $query->whereDate('created_at', '>=', $request->from_date);
     }
+
+    if ($request->to_date) {
+        $query->whereDate('created_at', '<=', $request->to_date);
+    }
+
+    // 📦 Status Filter
+    if ($request->status) {
+        $query->where('status', $request->status);
+    }
+
+    // 💊 Prescription Filter
+    if ($request->rx == 'yes') {
+        $query->whereNotNull('prescription_id');
+    }
+
+    if ($request->rx == 'no') {
+        $query->whereNull('prescription_id');
+    }
+
+    $orders = $query->latest()->paginate(10);
+
+    return view('admin.orders.index', compact('orders'));
+}
 
     // Order Details
     public function show($id)

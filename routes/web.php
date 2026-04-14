@@ -34,6 +34,8 @@ use App\Http\Controllers\Supplier\SupplierOrderController;
 use App\Http\Controllers\Supplier\SupplierItemController;
 use App\Http\Controllers\Supplier\SupplierDashboardController;
 use Illuminate\Http\Request;
+Route::get('/admin/prescription/{id}', [AdminController::class, 'viewPrescription'])
+    ->name('admin.prescription.view');
 Route::get('/search-items', [PurchaseController::class, 'searchItems']);
 Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create']);
 Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);

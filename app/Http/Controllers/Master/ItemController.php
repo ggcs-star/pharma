@@ -299,17 +299,12 @@ UPDATE
 ----------------------------------------------------*/
 public function update(Request $request, Item $item)
 {
-    Log::info('ITEM UPDATE START', ['item_id' => $item->id]);
-
     DB::beginTransaction();
 
     try {
 
         // 🔹 MAIN IMAGE
         if ($request->hasFile('main_image')) {
-
-            Log::info('Replacing main image');
-
             if ($item->main_image) {
                 Storage::disk('s3')->delete($item->main_image);
             }
@@ -318,7 +313,15 @@ public function update(Request $request, Item $item)
                 ->put('items/main', $request->file('main_image'));
         }
 
-        // 🔹 UPDATE DATA
+        // 🔹 REMOVE MAIN IMAGE
+        if ($request->remove_main_image) {
+            if ($item->main_image) {
+                Storage::disk('s3')->delete($item->main_image);
+            }
+            $item->main_image = null;
+        }
+
+        // 🔹 UPDATE ALL DATA (IMPORTANT 🔥)
         $item->update([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
@@ -330,19 +333,61 @@ public function update(Request $request, Item $item)
             'gst_percent' => $request->gst_percent ?? 0,
             'pack_id' => $request->pack_id,
             'unit_id' => $request->unit_id,
+            'number_of_units' => $request->number_of_units ?? 1,
 
             'category_id' => $request->category_id,
             'sub_category_id' => $request->sub_category_id,
 
             'manufacturer_id' => $request->manufacturer_id,
+            'molecule' => $request->molecule,
+
+            'barcode' => $request->barcode,
+            'rack' => $request->rack,
+            'hsn_code' => $request->hsn_code,
+            'sch_type' => $request->sch_type,
+
+            'min_threshold' => $request->min_threshold ?? 0,
+            'max_threshold' => $request->max_threshold ?? 0,
+
+            'conversion_factor' => $request->conversion_factor ?? 1,
+            'unit_ratio' => $request->unit_ratio ?? 1,
+
+            'max_discount' => $request->max_discount ?? 0,
+
+            // ✅ TOGGLES FIX
+            'inactive' => $request->boolean('inactive'),
+            'need_prescription' => $request->boolean('need_prescription'),
+            'not_for_online_sale' => $request->boolean('not_for_online_sale'),
+            'sell_loose' => $request->boolean('sell_loose'),
+
+            'notes' => $request->notes
         ]);
 
-        // 🔹 DELETE GALLERY
-        if ($request->deleted_images) {
+        // 🔥🔥🔥 BATCHES FIX (MOST IMPORTANT)
+        $item->batches()->delete();
 
-            foreach ($request->deleted_images as $id) {
+        if ($request->batches) {
+            foreach ($request->batches as $batch) {
+                $item->batches()->create([
+                    'batch_code' => $batch['batch_code'] ?? null,
+                    'stock' => $batch['stock'] ?? 0,
+                    'expiry_date' => $batch['expiry_date'] ?? null,
+                    'mrp' => $batch['mrp'] ?? 0,
+                    'ptr' => $batch['ptr'] ?? 0,
+                    'discount' => $batch['discount'] ?? 0,
+                    'margin' => $batch['margin'] ?? 0,
+                    'markup' => $batch['markup'] ?? 0,
+                    'selling_price' => $batch['selling_price'] ?? 0,
+                ]);
+            }
+        }
 
-                $img = $item->images()->find($id);
+        // 🔹 DELETE GALLERY (FIX NAME)
+        if ($request->deleted_gallery) {
+            $deleted = json_decode($request->deleted_gallery, true);
+
+            foreach ($deleted as $imgData) {
+                $img = $item->images()->find($imgData['id']);
 
                 if ($img) {
                     Storage::disk('s3')->delete($img->image);
@@ -352,37 +397,18 @@ public function update(Request $request, Item $item)
         }
 
         // 🔹 ADD NEW GALLERY
-       $galleryImages = $request->file('gallery_images');
-
-if (!empty($galleryImages)) {
-
-    foreach ($galleryImages as $index => $image) {
-
-        if ($image && $image->isValid()) {
-
-            try {
+        if ($request->hasFile('gallery_images')) {
+            foreach ($request->file('gallery_images') as $index => $image) {
                 $path = Storage::disk('s3')->put('items/gallery', $image);
 
                 $item->images()->create([
                     'image' => $path,
                     'sort_order' => $index
                 ]);
-
-                Log::info('Update Gallery Uploaded: ' . $path);
-
-            } catch (\Exception $e) {
-                Log::error('Update Gallery Error: ' . $e->getMessage());
             }
-
-        } else {
-            Log::warning('Invalid gallery file in update');
         }
-    }
-}
 
         DB::commit();
-
-        Log::info('ITEM UPDATE SUCCESS');
 
         return redirect()->route('master.items.index')
             ->with('success', 'Item Updated Successfully');
@@ -390,13 +416,109 @@ if (!empty($galleryImages)) {
     } catch (\Exception $e) {
 
         DB::rollBack();
-
-        Log::error('ITEM UPDATE ERROR: ' . $e->getMessage());
-        Log::error($e->getTraceAsString());
-
         return back()->with('error', $e->getMessage());
     }
 }
+// public function update(Request $request, Item $item)
+// {
+//     Log::info('ITEM UPDATE START', ['item_id' => $item->id]);
+
+//     DB::beginTransaction();
+
+//     try {
+
+//         // 🔹 MAIN IMAGE
+//         if ($request->hasFile('main_image')) {
+
+//             Log::info('Replacing main image');
+
+//             if ($item->main_image) {
+//                 Storage::disk('s3')->delete($item->main_image);
+//             }
+
+//             $item->main_image = Storage::disk('s3')
+//                 ->put('items/main', $request->file('main_image'));
+//         }
+
+//         // 🔹 UPDATE DATA
+//         $item->update([
+//             'name' => $request->name,
+//             'slug' => Str::slug($request->name),
+
+//             'description' => $request->description,
+//             'product_highlights' => $request->product_highlights,
+//             'brand' => $request->brand,
+
+//             'gst_percent' => $request->gst_percent ?? 0,
+//             'pack_id' => $request->pack_id,
+//             'unit_id' => $request->unit_id,
+
+//             'category_id' => $request->category_id,
+//             'sub_category_id' => $request->sub_category_id,
+
+//             'manufacturer_id' => $request->manufacturer_id,
+//         ]);
+
+//         // 🔹 DELETE GALLERY
+//         if ($request->deleted_images) {
+
+//             foreach ($request->deleted_images as $id) {
+
+//                 $img = $item->images()->find($id);
+
+//                 if ($img) {
+//                     Storage::disk('s3')->delete($img->image);
+//                     $img->delete();
+//                 }
+//             }
+//         }
+
+//         // 🔹 ADD NEW GALLERY
+//        $galleryImages = $request->file('gallery_images');
+
+// if (!empty($galleryImages)) {
+
+//     foreach ($galleryImages as $index => $image) {
+
+//         if ($image && $image->isValid()) {
+
+//             try {
+//                 $path = Storage::disk('s3')->put('items/gallery', $image);
+
+//                 $item->images()->create([
+//                     'image' => $path,
+//                     'sort_order' => $index
+//                 ]);
+
+//                 Log::info('Update Gallery Uploaded: ' . $path);
+
+//             } catch (\Exception $e) {
+//                 Log::error('Update Gallery Error: ' . $e->getMessage());
+//             }
+
+//         } else {
+//             Log::warning('Invalid gallery file in update');
+//         }
+//     }
+// }
+
+//         DB::commit();
+
+//         Log::info('ITEM UPDATE SUCCESS');
+
+//         return redirect()->route('master.items.index')
+//             ->with('success', 'Item Updated Successfully');
+
+//     } catch (\Exception $e) {
+
+//         DB::rollBack();
+
+//         Log::error('ITEM UPDATE ERROR: ' . $e->getMessage());
+//         Log::error($e->getTraceAsString());
+
+//         return back()->with('error', $e->getMessage());
+//     }
+// }
 
 /*----------------------------------------------------
 DELETE
