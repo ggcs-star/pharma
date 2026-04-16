@@ -238,9 +238,22 @@ private function formatItem($c)
 {
     $price = $c->batch->mrp ?? 0;
 
-    $image = !empty($c->item->main_image)
-        ? "https://pharma-catalog-assets.s3.us-east-1.amazonaws.com/".$c->item->main_image
-        : asset('no-image.png');
+  $image = null;
+
+if (!empty($c->item->main_image)) {
+
+    if (filter_var($c->item->main_image, FILTER_VALIDATE_URL)) {
+        // External URL (Excel import)
+        $image = $c->item->main_image;
+
+    } else {
+        // S3 stored path
+        $image = \Storage::disk('s3')->url($c->item->main_image);
+    }
+
+} else {
+    $image = asset('images/default-medicine.png');
+}
 
     return [
         'id' => $c->id,

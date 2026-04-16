@@ -143,20 +143,33 @@ class Item extends Model
     */
 
     // 🔹 Main Image URL
-    public function getMainImageUrlAttribute()
-    {
-        return $this->main_image
-            ? Storage::disk('s3')->url($this->main_image)
-            : null;
+ public function getMainImageUrlAttribute()
+{
+    if (!$this->main_image) {
+        return null;
     }
+
+    // ✅ If already full URL (Excel case)
+    if (str_starts_with($this->main_image, 'http')) {
+        return $this->main_image;
+    }
+
+    // ✅ If stored in S3
+    return Storage::disk('s3')->url($this->main_image);
+}
 
     // 🔹 Gallery Images URLs
     public function getGalleryUrlsAttribute()
-    {
-        return $this->images->map(function ($img) {
-            return Storage::disk('s3')->url($img->image);
-        });
-    }
+{
+    return $this->images->map(function ($img) {
+
+        if (str_starts_with($img->image, 'http')) {
+            return $img->image;
+        }
+
+        return Storage::disk('s3')->url($img->image);
+    });
+}
 
     /*
     |--------------------------------------------------------------------------

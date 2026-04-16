@@ -138,8 +138,10 @@
                                     @if($item->main_image)
                                         <div class="position-relative d-inline-block">
                                             <div class="main-image-container border rounded-3 p-3 bg-light" style="width: 100%; max-width: 300px;">
-                                                <img id="mainImageImg" src="{{ Storage::disk('s3')->url($item->main_image) }}" 
-                                                     alt="Main Image" class="img-fluid rounded" style="height: 200px; object-fit: contain; width: 100%;">
+                                                <img id="mainImageImg" 
+     src="{{ filter_var($item->main_image, FILTER_VALIDATE_URL) 
+        ? $item->main_image 
+        : Storage::disk('s3')->url($item->main_image) }}">
                                             </div>
                                             <button type="button" id="removeMainImageBtn" class="btn btn-sm btn-danger rounded-circle position-absolute top-0 end-0 m-2" style="z-index: 10;">
                                                 <i class="bi bi-x-lg"></i>
