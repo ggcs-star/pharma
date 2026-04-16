@@ -30,8 +30,8 @@
         @csrf
 
         <div class="mb-3">
-            <label>Select CSV File</label>
-            <input type="file" name="file" class="form-control" required>
+          <label>Select CSV / Excel File</label>
+<input type="file" name="file" class="form-control" accept=".csv,.xlsx,.xls" required>
         </div>
 
         <button type="submit" class="btn btn-success">Upload & Import</button>

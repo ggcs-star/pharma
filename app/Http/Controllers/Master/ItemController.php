@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ItemController extends Controller
 {
@@ -35,76 +36,654 @@ public function index()
     return view('master.items.index', compact('items'));
 }
 
+
+// public function import(Request $request)
+// {
+//     try {
+//         ini_set('memory_limit', '1024M');
+//         set_time_limit(0);
+
+//         DB::beginTransaction();
+
+//         $file = $request->file('file');
+
+//         if (!$file) {
+//             return back()->with('error', 'File not uploaded');
+//         }
+
+//         $data = Excel::toArray([], $file);
+//         $sheet = $data[0];
+
+//         if (empty($sheet)) {
+//             return back()->with('error', 'Excel file is empty');
+//         }
+
+//         // =========================
+//         // HEADER CLEAN
+//         // =========================
+//         $header = array_map(function ($h) {
+//             return strtolower(trim(str_replace([' ', '-'], '_', $h)));
+//         }, $sheet[0]);
+
+//         $header = array_filter($header);
+//         $header = array_values($header);
+
+//         Log::info('IMPORT HEADER CLEAN', $header);
+
+//         $processedCount = 0;
+//         $skippedCount = 0;
+
+//         // Process from row 1 (skip header)
+//         for ($rowIndex = 1; $rowIndex < count($sheet); $rowIndex++) {
+            
+//             $row = $sheet[$rowIndex];
+            
+//             // Skip completely empty rows
+//             if (empty(array_filter($row))) {
+//                 $skippedCount++;
+//                 continue;
+//             }
+            
+//             // Ensure row has enough columns
+//             $row = array_pad($row, count($header), null);
+//             $row = array_slice($row, 0, count($header));
+            
+//             // Create associative array
+//             $rowData = [];
+//             foreach ($header as $idx => $key) {
+//                 $rowData[$key] = $row[$idx] ?? null;
+//             }
+
+//             Log::info("ROW DATA (Row {$rowIndex})", $rowData);
+
+//             // =========================
+//             // NAME (Required field)
+//             // =========================
+//             $name = $rowData['product_name'] ?? $rowData['name'] ?? null;
+
+//             if (empty($name)) {
+//                 Log::warning("EMPTY NAME SKIPPED at row {$rowIndex}");
+//                 $skippedCount++;
+//                 continue;
+//             }
+
+//             // =========================
+//             // CATEGORY
+//             // =========================
+//             $categoryId = $this->getCategoryId('Medicine');
+//             $subCategoryId = $this->getSubCategoryId('General', $categoryId);
+
+//             // =========================
+//             // MANUFACTURER
+//             // =========================
+//             $marketer = $rowData['marketer'] ?? 'Generic';
+//             $manufacturerName = trim(explode(',', $marketer)[0]);
+//             $manufacturerId = $this->getManufacturerId($manufacturerName);
+
+//             // =========================
+//             // QTY
+//             // =========================
+//             $units = 1;
+//             if (!empty($rowData['qty'])) {
+//                 preg_match('/\d+/', (string)$rowData['qty'], $matches);
+//                 $units = $matches[0] ?? 1;
+//             }
+
+//             // =========================
+//             // IMAGE FIX
+//             // =========================
+//             $imagePath = null;
+//             $galleryImages = [];
+
+//             $imageUrls = $rowData['image_url'] ?? null;
+
+//             if (!empty($imageUrls)) {
+//                 // Handle different separators
+//                 $separator = strpos($imageUrls, '|') !== false ? '|' : (strpos($imageUrls, ',') !== false ? ',' : null);
+                
+//                 if ($separator) {
+//                     $urls = array_map('trim', explode($separator, $imageUrls));
+//                 } else {
+//                     $urls = [trim($imageUrls)];
+//                 }
+
+//                 foreach ($urls as $index => $url) {
+//                     if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+//                         if ($index == 0) {
+//                             $imagePath = $url; // main image
+//                         } else {
+//                             $galleryImages[] = $url; // gallery
+//                         }
+//                     }
+//                 }
+//             }
+
+//             // =========================
+//             // PRESCRIPTION
+//             // =========================
+//             $prescription = 0;
+//             $prescriptionRequired = $rowData['prescription_required'] ?? null;
+
+//             if (!empty($prescriptionRequired)) {
+//                 $prescription = in_array(
+//                     strtolower(trim($prescriptionRequired)),
+//                     ['yes', '1', 'true', 'required']
+//                 ) ? 1 : 0;
+//             }
+
+//             // =========================
+//             // CREATE / UPDATE ITEM
+//             // =========================
+//             $itemData = [
+//                 'slug' => Str::slug($name),
+//                 'manufacturer_id' => $manufacturerId,
+//                 'category_id' => $categoryId,
+//                 'sub_category_id' => $subCategoryId,
+//                 'pack_id' => $this->getPackId($rowData['package'] ?? 'Strip'),
+//                 'unit_id' => $this->getUnitId($rowData['product_form'] ?? 'Tablet'),
+//                 'number_of_units' => $units,
+//                 'gst_percent' => $rowData['gst'] ?? 0,
+//                 'hsn_code' => $rowData['hsn'] ?? null,
+//                 'rack' => $rowData['rack'] ?? null,
+//                 'barcode' => $rowData['barcode'] ?? null,
+//                 'molecule' => $rowData['composition'] ?? null,
+//                 'main_image' => $imagePath,
+//                 'description' => $rowData['description'] ?? $rowData['introduction'] ?? null,
+//                 'brand' => $rowData['marketer'] ?? null,
+//                 'need_prescription' => $prescription,
+//                 'product_highlights' => json_encode([
+//                     'primary_use' => $rowData['primary_use'] ?? null,
+//                     'side_effect' => $rowData['common_side_effect'] ?? null,
+//                 ]),
+//                 // DEFAULTS
+//                 'min_threshold' => 0,
+//                 'max_threshold' => 0,
+//                 'conversion_factor' => 1,
+//                 'unit_ratio' => 1,
+//                 'max_self_life' => 0,
+//                 'max_discount' => 0,
+//                 'not_for_online_sale' => 0,
+//                 'inactive' => 0,
+//                 'block_purchase' => 0,
+//                 'service_item' => 0,
+//                 'sell_loose' => 0,
+//                 'override_loose' => 0,
+//                 'notes' => json_encode($rowData),
+//             ];
+
+//             // Check if item exists to update or create new
+//             $item = Item::where('name', $name)->first();
+            
+//             if ($item) {
+//                 $item->update($itemData);
+//                 Log::info("ITEM UPDATED: {$item->id} - {$name}");
+//             } else {
+//                 $item = Item::create($itemData);
+//                 Log::info("ITEM CREATED: {$item->id} - {$name}");
+//             }
+
+//             // =========================
+//             // SAVE GALLERY IMAGES (Delete old ones if updating)
+//             // =========================
+//             if (!empty($galleryImages)) {
+//                 // Optional: Delete existing gallery images when updating
+//                 // DB::table('item_images')->where('item_id', $item->id)->delete();
+                
+//                 foreach ($galleryImages as $key => $img) {
+//                     DB::table('item_images')->updateOrInsert(
+//                         [
+//                             'item_id' => $item->id,
+//                             'image' => $img,
+//                         ],
+//                         [
+//                             'sort_order' => $key + 1,
+//                             'updated_at' => now(),
+//                             'created_at' => now(),
+//                         ]
+//                     );
+//                 }
+//             }
+
+//             $processedCount++;
+//         }
+
+//         DB::commit();
+
+//         $message = "✅ Excel Imported Successfully. Processed: {$processedCount} items, Skipped: {$skippedCount} rows.";
+        
+//         Log::info($message);
+        
+//         return back()->with('success', $message);
+
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         Log::error('IMPORT ERROR: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+//         return back()->with('error', 'Import failed: ' . $e->getMessage());
+//     }
+// }
+// public function import(Request $request)
+// {
+//     try {
+//         ini_set('memory_limit', '1024M');
+//         set_time_limit(0);
+
+//         DB::beginTransaction();
+
+//         $file = $request->file('file');
+
+//         if (!$file) {
+//             return back()->with('error', 'File not uploaded');
+//         }
+
+//         $data = Excel::toArray([], $file);
+//         $sheet = $data[0];
+
+//         if (empty($sheet)) {
+//             return back()->with('error', 'Excel file is empty');
+//         }
+
+//         // =========================
+//         // HEADER CLEAN
+//         // =========================
+//         $header = array_map(function ($h) {
+//             return strtolower(trim(str_replace([' ', '-'], '_', $h)));
+//         }, $sheet[0]);
+
+//         $header = array_filter($header);
+//         $header = array_values($header);
+
+//         Log::info('IMPORT HEADER CLEAN', $header);
+
+//         $processedCount = 0;
+//         $skippedCount = 0;
+
+//         // Process from row 1 (skip header)
+//         for ($rowIndex = 1; $rowIndex < count($sheet); $rowIndex++) {
+            
+//             $row = $sheet[$rowIndex];
+            
+//             // Skip completely empty rows
+//             if (empty(array_filter($row))) {
+//                 $skippedCount++;
+//                 continue;
+//             }
+            
+//             // Ensure row has enough columns
+//             $row = array_pad($row, count($header), null);
+//             $row = array_slice($row, 0, count($header));
+            
+//             // Create associative array
+//             $rowData = [];
+//             foreach ($header as $idx => $key) {
+//                 $rowData[$key] = $row[$idx] ?? null;
+//             }
+
+//             Log::info("ROW DATA (Row {$rowIndex})", $rowData);
+
+//             // =========================
+//             // NAME (Required field)
+//             // =========================
+//             $name = $rowData['product_name'] ?? $rowData['name'] ?? null;
+
+//             if (empty($name)) {
+//                 Log::warning("EMPTY NAME SKIPPED at row {$rowIndex}");
+//                 $skippedCount++;
+//                 continue;
+//             }
+
+//             // Add timestamp to make name unique if needed
+//             // Uncomment if you want to force unique names on each import
+//             // $name = $name . ' - ' . now()->format('Y-m-d H:i:s');
+
+//             // =========================
+//             // CATEGORY
+//             // =========================
+//             $categoryId = $this->getCategoryId('Medicine');
+//             $subCategoryId = $this->getSubCategoryId('General', $categoryId);
+
+//             // =========================
+//             // MANUFACTURER
+//             // =========================
+//             $marketer = $rowData['marketer'] ?? 'Generic';
+//             $manufacturerName = trim(explode(',', $marketer)[0]);
+//             $manufacturerId = $this->getManufacturerId($manufacturerName);
+
+//             // =========================
+//             // QTY
+//             // =========================
+//             $units = 1;
+//             if (!empty($rowData['qty'])) {
+//                 preg_match('/\d+/', (string)$rowData['qty'], $matches);
+//                 $units = $matches[0] ?? 1;
+//             }
+
+//             // =========================
+//             // IMAGE FIX
+//             // =========================
+//             $imagePath = null;
+//             $galleryImages = [];
+
+//             $imageUrls = $rowData['image_url'] ?? null;
+
+//             if (!empty($imageUrls)) {
+//                 $separator = strpos($imageUrls, '|') !== false ? '|' : (strpos($imageUrls, ',') !== false ? ',' : null);
+                
+//                 if ($separator) {
+//                     $urls = array_map('trim', explode($separator, $imageUrls));
+//                 } else {
+//                     $urls = [trim($imageUrls)];
+//                 }
+
+//                 foreach ($urls as $index => $url) {
+//                     if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+//                         if ($index == 0) {
+//                             $imagePath = $url;
+//                         } else {
+//                             $galleryImages[] = $url;
+//                         }
+//                     }
+//                 }
+//             }
+
+//             // =========================
+//             // PRESCRIPTION
+//             // =========================
+//             $prescription = 0;
+//             $prescriptionRequired = $rowData['prescription_required'] ?? null;
+
+//             if (!empty($prescriptionRequired)) {
+//                 $prescription = in_array(
+//                     strtolower(trim($prescriptionRequired)),
+//                     ['yes', '1', 'true', 'required']
+//                 ) ? 1 : 0;
+//             }
+
+//             // =========================
+//             // CREATE NEW ITEM (ALWAYS) 🔥
+//             // =========================
+//             $itemData = [
+//                 'name' => $name,  // Include name in create
+//                 'slug' => Str::slug($name) . '-' . uniqid(), // Add unique ID to slug
+//                 'manufacturer_id' => $manufacturerId,
+//                 'category_id' => $categoryId,
+//                 'sub_category_id' => $subCategoryId,
+//                 'pack_id' => $this->getPackId($rowData['package'] ?? 'Strip'),
+//                 'unit_id' => $this->getUnitId($rowData['product_form'] ?? 'Tablet'),
+//                 'number_of_units' => $units,
+//                 'gst_percent' => $rowData['gst'] ?? 0,
+//                 'hsn_code' => $rowData['hsn'] ?? null,
+//                 'rack' => $rowData['rack'] ?? null,
+//                 'barcode' => $rowData['barcode'] ?? null,
+//                 'molecule' => $rowData['composition'] ?? null,
+//                 'main_image' => $imagePath,
+//                 'description' => $rowData['description'] ?? $rowData['introduction'] ?? null,
+//                 'brand' => $rowData['marketer'] ?? null,
+//                 'need_prescription' => $prescription,
+//                 'product_highlights' => json_encode([
+//                     'primary_use' => $rowData['primary_use'] ?? null,
+//                     'side_effect' => $rowData['common_side_effect'] ?? null,
+//                 ]),
+//                 'min_threshold' => 0,
+//                 'max_threshold' => 0,
+//                 'conversion_factor' => 1,
+//                 'unit_ratio' => 1,
+//                 'max_self_life' => 0,
+//                 'max_discount' => 0,
+//                 'not_for_online_sale' => 0,
+//                 'inactive' => 0,
+//                 'block_purchase' => 0,
+//                 'service_item' => 0,
+//                 'sell_loose' => 0,
+//                 'override_loose' => 0,
+//                 'notes' => json_encode($rowData),
+//             ];
+
+//             // ALWAYS CREATE NEW RECORD
+//             $item = Item::create($itemData);
+            
+//             Log::info("ITEM CREATED: {$item->id} - {$name}");
+
+//             // =========================
+//             // SAVE GALLERY IMAGES
+//             // =========================
+//             if (!empty($galleryImages)) {
+//                 foreach ($galleryImages as $key => $img) {
+//                     DB::table('item_images')->insert([
+//                         'item_id' => $item->id,
+//                         'image' => $img,
+//                         'sort_order' => $key + 1,
+//                         'created_at' => now(),
+//                         'updated_at' => now(),
+//                     ]);
+//                 }
+//             }
+
+//             $processedCount++;
+//         }
+
+//         DB::commit();
+
+//         $message = "✅ Excel Imported Successfully. Created: {$processedCount} new items, Skipped: {$skippedCount} rows.";
+        
+//         Log::info($message);
+        
+//         return back()->with('success', $message);
+
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         Log::error('IMPORT ERROR: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+//         return back()->with('error', 'Import failed: ' . $e->getMessage());
+//     }
+// }
 public function import(Request $request)
 {
     try {
+        ini_set('memory_limit', '1024M');
+        set_time_limit(0);
+
+        DB::beginTransaction();
+
         $file = $request->file('file');
 
-        $handle = fopen($file->getRealPath(), 'r');
+        if (!$file) {
+            return back()->with('error', 'File not uploaded');
+        }
 
-        $header = fgetcsv($handle);
+        $data = Excel::toArray([], $file);
+        $sheet = $data[0];
 
-        while (($row = fgetcsv($handle)) !== false) {
+        if (empty($sheet)) {
+            return back()->with('error', 'Excel file is empty');
+        }
 
-            // skip broken rows
-            if (count($row) != count($header)) {
+        // =========================
+        // HEADER CLEAN
+        // =========================
+        $header = array_map(function ($h) {
+            return strtolower(trim(str_replace([' ', '-'], '_', $h)));
+        }, $sheet[0]);
+
+        $header = array_filter($header);
+        $header = array_values($header);
+
+        Log::info('IMPORT HEADER CLEAN', $header);
+
+        $processedCount = 0;
+        $skippedCount = 0;
+
+        // Process from row 1 (skip header)
+        for ($rowIndex = 1; $rowIndex < count($sheet); $rowIndex++) {
+            
+            $row = $sheet[$rowIndex];
+            
+            // Skip completely empty rows
+            if (empty(array_filter($row))) {
+                $skippedCount++;
+                continue;
+            }
+            
+            // Ensure row has enough columns
+            $row = array_pad($row, count($header), null);
+            $row = array_slice($row, 0, count($header));
+            
+            // Create associative array
+            $rowData = [];
+            foreach ($header as $idx => $key) {
+                $rowData[$key] = $row[$idx] ?? null;
+            }
+
+            Log::info("ROW DATA (Row {$rowIndex})", $rowData);
+
+            // =========================
+            // NAME (Required field)
+            // =========================
+            $name = $rowData['product_name'] ?? $rowData['name'] ?? null;
+
+            if (empty($name)) {
+                Log::warning("EMPTY NAME SKIPPED at row {$rowIndex}");
+                $skippedCount++;
                 continue;
             }
 
-$data = array_combine($header, $row);
+            // =========================
+            // CATEGORY
+            // =========================
+            $categoryId = $this->getCategoryId('Medicine');
+            $subCategoryId = $this->getSubCategoryId('General', $categoryId);
 
-if (!isset($data['pack'])) {
-    return back()->with('error', 'CSV HEADER ISSUE: pack column missing');
-}
-            if (empty($data['name'])) continue;
-$categoryId = $this->getCategoryId($data['category'] ?? 'Medicine');
+            // =========================
+            // MANUFACTURER
+            // =========================
+            $marketer = $rowData['marketer'] ?? 'Generic';
+            $manufacturerName = trim(explode(',', $marketer)[0]);
+            $manufacturerId = $this->getManufacturerId($manufacturerName);
 
-$subCategoryId = $this->getSubCategoryId(
-    $data['sub_category'] ?? 'General',
-    $categoryId
-);
+            // =========================
+            // QTY
+            // =========================
+            $units = 1;
+            if (!empty($rowData['qty'])) {
+                preg_match('/\d+/', (string)$rowData['qty'], $matches);
+                $units = $matches[0] ?? 1;
+            }
 
-$manufacturerId = $this->getManufacturerId($data['manufacturer'] ?? 'Generic');
+            // =========================
+            // IMAGE FIX
+            // =========================
+            $imagePath = null;
+            $galleryImages = [];
 
-\App\Models\Item::create([
-    'name' => $data['name'],
-    'slug' => \Str::slug($data['name']),
-    'gst_percent' => $data['gst_percent'] ?? 0,
+            $imageUrls = $rowData['image_url'] ?? null;
 
-    'pack_id' => $this->getPackId($data['pack'] ?? 'Strip'),
-    'unit_id' => $this->getUnitId($data['unit'] ?? 'Tablet'),
+            if (!empty($imageUrls)) {
+                $separator = strpos($imageUrls, '|') !== false ? '|' : (strpos($imageUrls, ',') !== false ? ',' : null);
+                
+                if ($separator) {
+                    $urls = array_map('trim', explode($separator, $imageUrls));
+                } else {
+                    $urls = [trim($imageUrls)];
+                }
 
-    'category_id' => $categoryId,
-    'sub_category_id' => $subCategoryId,
-    'manufacturer_id' => $manufacturerId,
+                foreach ($urls as $index => $url) {
+                    if (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+                        if ($index == 0) {
+                            $imagePath = $url;
+                        } else {
+                            $galleryImages[] = $url;
+                        }
+                    }
+                }
+            }
 
-    'number_of_units' => $data['number_of_units'] ?? 1,
+            // =========================
+            // PRESCRIPTION (FIXED) 🔥
+            // =========================
+            $prescription = 0;
+            // Check both possible column names from Excel
+            $prescriptionRequired = $rowData['prescription_required'] ?? $rowData['need_prescription'] ?? null;
+            
+            if (!empty($prescriptionRequired)) {
+                $prescription = in_array(
+                    strtolower(trim($prescriptionRequired)),
+                    ['yes', '1', 'true', 'required', 'prescription required', 'prescription']
+                ) ? 1 : 0;
+            }
 
-    // 🔥 ALL REQUIRED FIELDS MANUAL
-    'min_threshold' => $data['min_threshold'] ?? 0,
-    'max_threshold' => $data['max_threshold'] ?? 0,
-    'conversion_factor' => $data['conversion_factor'] ?? 1,
+            // =========================
+            // CREATE NEW ITEM (ALWAYS)
+            // =========================
+            $itemData = [
+                'name' => $name,
+                'slug' => Str::slug($name) . '-' . uniqid(),
+                'manufacturer_id' => $manufacturerId,
+                'category_id' => $categoryId,
+                'sub_category_id' => $subCategoryId,
+                'pack_id' => $this->getPackId($rowData['package'] ?? 'Strip'),
+                'unit_id' => $this->getUnitId($rowData['product_form'] ?? 'Tablet'),
+                'number_of_units' => $units,
+                'gst_percent' => $rowData['gst'] ?? 0,
+                'hsn_code' => $rowData['hsn'] ?? null,
+                'rack' => $rowData['rack'] ?? null,
+                'barcode' => $rowData['barcode'] ?? null,
+                'molecule' => $rowData['composition'] ?? null,
+                'main_image' => $imagePath,
+                'description' => $rowData['description'] ?? $rowData['introduction'] ?? null,
+                'brand' => $rowData['marketer'] ?? null,
+                'need_prescription' => $prescription,  // ← Database column
+                'product_highlights' => json_encode([
+                    'primary_use' => $rowData['primary_use'] ?? null,
+                    'side_effect' => $rowData['common_side_effect'] ?? null,
+                ]),
+                'min_threshold' => 0,
+                'max_threshold' => 0,
+                'conversion_factor' => 1,
+                'unit_ratio' => 1,
+                'max_self_life' => 0,
+                'max_discount' => 0,
+                'not_for_online_sale' => 0,
+                'inactive' => 0,
+                'block_purchase' => 0,
+                'service_item' => 0,
+                'sell_loose' => 0,
+                'override_loose' => 0,
+                'notes' => json_encode($rowData),
+            ];
 
-    'need_prescription' => $data['need_prescription'] ?? 0,
-    'not_for_online_sale' => $data['not_for_online_sale'] ?? 0,
-    'inactive' => $data['inactive'] ?? 0,
-    'block_purchase' => $data['block_purchase'] ?? 0,
-    'service_item' => $data['service_item'] ?? 0,
-    'sell_loose' => $data['sell_loose'] ?? 0,
-    'override_loose' => $data['override_loose'] ?? 0,
-    'unit_ratio' => $data['unit_ratio'] ?? 1,
-    'max_self_life' => $data['max_self_life'] ?? 0, 
-    'max_discount' => $data['max_discount'] ?? 0,
-]);
+            // ALWAYS CREATE NEW RECORD
+            $item = Item::create($itemData);
+            
+            Log::info("ITEM CREATED: {$item->id} - {$name} - Prescription: {$prescription}");
+
+            // =========================
+            // SAVE GALLERY IMAGES
+            // =========================
+            if (!empty($galleryImages)) {
+                foreach ($galleryImages as $key => $img) {
+                    DB::table('item_images')->insert([
+                        'item_id' => $item->id,
+                        'image' => $img,
+                        'sort_order' => $key + 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            $processedCount++;
         }
 
-        fclose($handle);
+        DB::commit();
 
-        return back()->with('success', '✅ CSV Imported Successfully');
+        $message = "✅ Excel Imported Successfully. Created: {$processedCount} new items, Skipped: {$skippedCount} rows.";
+        
+        Log::info($message);
+        
+        return back()->with('success', $message);
 
     } catch (\Exception $e) {
-
-        return back()->with('error', $e->getMessage());
+        DB::rollBack();
+        Log::error('IMPORT ERROR: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+        return back()->with('error', 'Import failed: ' . $e->getMessage());
     }
 }
 private function getCategoryId($name)

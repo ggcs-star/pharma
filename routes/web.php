@@ -49,19 +49,19 @@ Route::get('/purchase-return/items/{id}', [PurchaseReturnController::class, 'get
 Route::get('sales-return', [SalesReturnController::class, 'index'])
     ->name('sales_return.index');
 // Bill based create (GET)
-Route::get('sales-return/create', [SalesReturnController::class, 'create'])
-    ->name('sales.return.create');
+// Route::get('sales-return/create', [SalesReturnController::class, 'create'])
+//     ->name('sales.return.create');
 
 // Store return (POST)
-Route::get('sales-return/create', [SalesReturnController::class, 'create'])
-    ->name('sales.return.create');
+// Route::get('sales-return/create', [SalesReturnController::class, 'create'])
+//     ->name('sales.return.create');
 
-Route::post('sales-return/store', [SalesReturnController::class, 'store'])
-    ->name('sales_return.store');
+// Route::post('sales-return/store', [SalesReturnController::class, 'store'])
+//     ->name('sales_return.store');
 
 // Store Return
-Route::post('sales-return/store', [SalesReturnController::class, 'store'])
-    ->name('sales_return.store');
+// Route::post('sales-return/store', [SalesReturnController::class, 'store'])
+//     ->name('sales_return.store');
 Route::prefix('sales')->name('sales.')->group(function () {
 
     Route::get('/return', [SalesReturnController::class, 'index'])->name('return.index');
