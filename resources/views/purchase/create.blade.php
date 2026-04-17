@@ -5,7 +5,7 @@
 <div class="container-fluid px-4 py-3">
     <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
         {{-- Header --}}
-        <div class="card-header bg-gradient-primary text-white py-4 border-0">
+        <div class="card-header bg-gradient-primary text-white py-3 border-0">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h4 class="mb-0 fw-bold">
@@ -16,7 +16,7 @@
                 <div class="text-end">
                     <div class="bg-white-20 rounded-3 px-3 py-2">
                         <i class="fas fa-calendar-alt me-1"></i>
-<span class="small" id="displayPurchaseDate">{{ date('d-m-Y') }}</span>
+                        <span class="small" id="displayPurchaseDate">{{ date('d-m-Y') }}</span>
                     </div>
                 </div>
             </div>
@@ -27,26 +27,26 @@
                 @csrf
 
                 {{-- Header Information --}}
-                <div class="row g-4 mb-5">
+                <div class="row g-3 mb-4">
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">
+                        <label class="form-label fw-semibold small">
                             <i class="fas fa-receipt text-primary me-1"></i> Invoice No <span class="text-danger">*</span>
                         </label>
-                        <input type="text" name="invoice_number" class="form-control form-control-lg" 
+                        <input type="text" name="invoice_number" class="form-control" 
                                placeholder="INV-001" required>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">
+                        <label class="form-label fw-semibold small">
                             <i class="fas fa-calendar-day text-primary me-1"></i> Purchase Date <span class="text-danger">*</span>
                         </label>
-                        <input type="date" name="purchase_date" id="purchase_date" class="form-control form-control-lg" 
+                        <input type="date" name="purchase_date" id="purchase_date" class="form-control" 
                                value="{{ date('Y-m-d') }}" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">
+                        <label class="form-label fw-semibold small">
                             <i class="fas fa-truck text-primary me-1"></i> Supplier <span class="text-danger">*</span>
                         </label>
-                        <select name="supplier_id" id="supplier_id" class="form-select form-select-lg" required>
+                        <select name="supplier_id" id="supplier_id" class="form-select" required>
                             <option value="">-- Select Supplier --</option>
                             @foreach($suppliers as $supplier)
                                 <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
@@ -54,10 +54,10 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label fw-semibold">
+                        <label class="form-label fw-semibold small">
                             <i class="fas fa-wallet text-primary me-1"></i> Payment Type
                         </label>
-                        <select name="payment_type" id="payment_type" class="form-select form-select-lg">
+                        <select name="payment_type" id="payment_type" class="form-select">
                             <option value="Pending">⏳ Pending</option>
                             <option value="Cash">💵 Cash</option>
                             <option value="UPI">📱 UPI</option>
@@ -67,7 +67,7 @@
                 </div>
 
                 {{-- Add Item Button --}}
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <h5 class="mb-0 text-dark">
                             <i class="fas fa-boxes text-primary me-2"></i> Purchase Items
@@ -80,81 +80,74 @@
                 </div>
 
                 {{-- Items Table --}}
-                <div class="table-responsive mb-4 rounded-3 border">
-                    <table class="table table-bordered table-hover align-middle mb-0" id="purchaseTable">
-                        <thead class="bg-light">
-                            <tr class="text-center">
-                                <th width="3%" class="py-3">#</th>
-                                <th width="14%" class="py-3">Item <span class="text-danger">*</span></th>
-                                <th width="6%" class="py-3">Qty <span class="text-danger">*</span></th>
-                                <th width="6%" class="py-3">Free</th>
-                                <th width="10%" class="py-3">Batch No <span class="text-danger">*</span></th>
-                                <th width="8%" class="py-3">Expiry <span class="text-danger">*</span></th>
-                                <th width="7%" class="py-3">MRP (₹)</th>
-                                <th width="7%" class="py-3">PTR (₹)</th>
-                                <th width="6%" class="py-3">GST%</th>
-                                <th width="6%" class="py-3">Disc%</th>
-                                <th width="7%" class="py-3">Disc ₹</th>
-                                <th width="8%" class="py-3">Taxable</th>
-                                <th width="8%" class="py-3">GST</th>
-                                <th width="8%" class="py-3">Total</th>
-                                <th width="3%" class="py-3"></th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                <div class="purchase-table-wrapper" style="position: relative;">
+                    <div class="table-responsive rounded-3 border" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-bordered table-hover mb-0" id="purchaseTable" style="min-width: 1800px;">
+                            <thead class="bg-light sticky-top">
+                                <tr class="text-center small">
+                                    <th style="width: 3%;">#</th>
+                                    <th style="width: 12%;">Item <span class="text-danger">*</span></th>
+                                    <th style="width: 5%;">Qty <span class="text-danger">*</span></th>
+                                    <th style="width: 5%;">Free</th>
+                                    <th style="width: 8%;">Batch No <span class="text-danger">*</span></th>
+                                    <th style="width: 7%;">Expiry <span class="text-danger">*</span></th>
+                                    <th style="width: 6%;">MRP (₹)</th>
+                                    <th style="width: 6%;">PTR (₹)</th>
+                                    <th style="width: 5%;">GST%</th>
+                                    <th style="width: 5%;">Disc%</th>
+                                    <th style="width: 6%;">Disc ₹</th>
+                                    <th style="width: 7%;">Taxable</th>
+                                    <th style="width: 6%;">GST</th>
+                                    <th style="width: 7%;">Total</th>
+                                    <th style="width: 4%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 {{-- Totals Section --}}
                 <div class="row justify-content-end mt-4">
                     <div class="col-md-5 col-lg-4">
                         <div class="card bg-gradient-light border-0 rounded-4 shadow-sm">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between mb-3 pb-2 border-bottom">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
                                     <span class="fw-semibold text-muted">Subtotal:</span>
-                                    <span class="fw-bold fs-5">₹ <span id="subTotal">0.00</span></span>
+                                    <span class="fw-bold">₹ <span id="subTotal">0.00</span></span>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="fw-semibold text-muted small mb-1">Extra Charges:</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-transparent">₹</span>
+                                        <input type="number" step="0.01" name="extra_charges" id="extraCharges" 
+                                               class="form-control" value="0">
+                                    </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="fw-semibold text-muted mb-1">Extra Charges:</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-transparent border-end-0">₹</span>
-                                        <input type="number" step="0.01" name="extra_charges" id="extraCharges" 
-                                               class="form-control border-start-0 ps-0" value="0">
-                                    </div>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="fw-semibold text-muted mb-1">Round Off:</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-transparent border-end-0">₹</span>
+                                    <label class="fw-semibold text-muted small mb-1">Round Off:</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-transparent">₹</span>
                                         <input type="number" step="0.01" name="round_off" id="roundOff" 
-                                               class="form-control border-start-0 ps-0" value="0">
+                                               class="form-control" value="0">
                                     </div>
                                 </div>
-                                <hr class="my-3">
+                                <hr class="my-2">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fs-5 fw-bold">Grand Total:</span>
-                                    <span class="fs-3 fw-bold text-gradient">₹ <span id="grandTotal">0.00</span></span>
+                                    <span class="fw-bold">Grand Total:</span>
+                                    <span class="fs-5 fw-bold text-gradient">₹ <span id="grandTotal">0.00</span></span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Hidden Items Template --}}
-                <div style="display: none;">
-                    <select id="itemTemplate">
-                        @foreach($items as $item)
-                            <option value="{{ $item->id }}">{{ $item->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
                 {{-- Action Buttons --}}
-                <div class="d-flex justify-content-end gap-3 mt-5 pt-3 border-top">
-                    <a href="{{ route('purchase.index') }}" class="btn btn-outline-secondary px-5 py-2 rounded-pill">
+                <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
+                    <a href="{{ route('purchase.index') }}" class="btn btn-outline-secondary px-4 rounded-pill">
                         <i class="fas fa-times me-2"></i> Cancel
                     </a>
-                    <button type="submit" class="btn btn-gradient-success px-5 py-2 rounded-pill shadow-sm">
+                    <button type="submit" class="btn btn-gradient-success px-4 rounded-pill shadow-sm">
                         <i class="fas fa-save me-2"></i> Save Purchase
                     </button>
                 </div>
@@ -163,32 +156,43 @@
     </div>
 </div>
 
+{{-- TomSelect CSS --}}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+
+{{-- TomSelect JS --}}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
 <script>
     let rowIndex = 0;
     let isLoading = false;
     const itemCache = new Map();
+    const tomSelectInstances = new Map();
+    
+    let allItems = @json($items);
 
     function addRow() {
         const tbody = document.querySelector("#purchaseTable tbody");
         const row = createEmptyRow(rowIndex);
         tbody.insertAdjacentHTML('beforeend', row);
-        rowIndex++;
         
         setTimeout(() => {
             const lastRow = tbody.lastElementChild;
             const itemSelect = lastRow.querySelector('.itemSelect');
-            if (itemSelect) itemSelect.focus();
-        }, 100);
+            if (itemSelect) {
+                initTomSelect(itemSelect);
+            }
+        }, 50);
+        
+        rowIndex++;
     }
 
     function createEmptyRow(index) {
         return `
             <tr data-row-index="${index}">
-                <td class="text-center row-number fw-bold bg-light">${index + 1}</td>
+                <td class="text-center row-number fw-bold bg-light small">${index + 1}</td>
                 <td>
-                    <select name="items[${index}][item_id]" class="form-select form-select-sm itemSelect border-0 bg-light" required>
-                        <option value="">-- Select Item --</option>
-                        ${document.getElementById('itemTemplate').innerHTML}
+                    <select name="items[${index}][item_id]" class="itemSelect form-select form-select-sm" required>
+                        <option value="">-- Select --</option>
                     </select>
                     <input type="hidden" name="items[${index}][barcode]" class="barcode">
                     <input type="hidden" name="items[${index}][rack]" class="rack">
@@ -210,8 +214,7 @@
                     <input type="date" name="items[${index}][expiry_date]" class="form-control form-control-sm expiryDate" required>
                 </td>
                 <td>
-                    <input type="number" step="0.01" name="items[${index}][mrp]" class="form-control form-control-sm mrp text-end" 
-                           value="0">
+                    <input type="number" step="0.01" name="items[${index}][mrp]" class="form-control form-control-sm mrp text-end" value="0">
                 </td>
                 <td>
                     <input type="number" step="0.01" name="items[${index}][purchase_rate]" class="form-control form-control-sm rate text-end" required>
@@ -235,16 +238,80 @@
                     <input type="number" step="0.01" name="items[${index}][total_amount]" class="form-control form-control-sm amount text-end fw-bold bg-light" readonly>
                 </td>
                 <td class="text-center">
-                    <button type="button" onclick="removeRow(this)" class="btn btn-danger btn-sm rounded-circle" style="width: 32px; height: 32px; padding: 0;">
-                        <i class="fas fa-trash-alt"></i>
+                    <button type="button" onclick="removeRow(this)" class="btn btn-danger btn-sm rounded-circle" style="width: 28px; height: 28px; padding: 0;">
+                        <i class="fas fa-trash-alt fa-xs"></i>
                     </button>
                 </td>
             </tr>
         `;
     }
 
+    function initTomSelect(element) {
+        const existingInstance = tomSelectInstances.get(element);
+        if (existingInstance) existingInstance.destroy();
+
+        const formattedItems = allItems.map(item => ({
+            id: item.id,
+            name: item.name,
+            gst_percent: item.gst_percent || 0,
+            hsn_code: item.hsn_code || 'N/A',
+            barcode: item.barcode || '',
+            rack: item.rack || '',
+            mrp: item.mrp || 0,
+            purchase_rate: item.purchase_rate || 0
+        }));
+
+        const ts = new TomSelect(element, {
+            valueField: 'id',
+            labelField: 'name',
+            searchField: ['name'],
+            options: formattedItems,
+            maxOptions: 50,
+            maxItems: 1,
+            create: false,
+            persist: false,
+            closeAfterSelect: true,
+            placeholder: 'Search item...',
+            dropdownParent: 'body',
+            
+            render: {
+                option: function(item, escape) {
+                    return `
+                        <div class="py-1 px-2">
+                            <div class="fw-semibold small">${escape(item.name)}</div>
+                            <div class="small text-muted">
+                                GST: ${item.gst_percent || 0}% | HSN: ${item.hsn_code || 'N/A'}
+                            </div>
+                        </div>
+                    `;
+                },
+                item: function(item, escape) {
+                    return `<div class="small">${escape(item.name)}</div>`;
+                }
+            }
+        });
+
+        tomSelectInstances.set(element, ts);
+
+        ts.on('change', function(value) {
+            const row = element.closest('tr');
+            if (value) {
+                loadItemData(value, row);
+                setTimeout(() => row.querySelector('.qty')?.focus(), 50);
+            }
+        });
+    }
+
     function removeRow(btn) {
         const row = btn.closest('tr');
+        const itemSelect = row.querySelector('.itemSelect');
+        if (itemSelect) {
+            const ts = tomSelectInstances.get(itemSelect);
+            if (ts) {
+                ts.destroy();
+                tomSelectInstances.delete(itemSelect);
+            }
+        }
         row.remove();
         refreshRowNumbers();
         calculateTotal();
@@ -252,10 +319,16 @@
 
     function refreshRowNumbers() {
         document.querySelectorAll('#purchaseTable tbody tr').forEach((tr, i) => {
-            const rowNumber = tr.querySelector('.row-number');
-            if (rowNumber) rowNumber.innerText = i + 1;
+            tr.querySelector('.row-number').innerText = i + 1;
             tr.setAttribute('data-row-index', i);
+            tr.querySelectorAll('[name]').forEach(input => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    input.setAttribute('name', name.replace(/items\[\d+\]/, `items[${i}]`));
+                }
+            });
         });
+        rowIndex = document.querySelectorAll('#purchaseTable tbody tr').length;
     }
 
     async function loadItemData(itemId, row) {
@@ -266,33 +339,25 @@
             return;
         }
         
-        if (isLoading) return;
-        isLoading = true;
-        
         try {
             const response = await fetch(`/purchase/get-item/${itemId}`);
-            if (!response.ok) throw new Error('Failed to load item data');
             const data = await response.json();
             itemCache.set(itemId, data);
             populateItemData(data, row);
         } catch (error) {
-            console.error('Error loading item:', error);
-            alert('Failed to load item details. Please try again.');
-        } finally {
-            isLoading = false;
+            console.error('Error:', error);
         }
     }
 
     function populateItemData(data, row) {
-        const gstField = row.querySelector('.gst');
-        if (gstField) {
-            gstField.value = data.gst_percent || 0;
-            calculateRowTotal(row);
-        }
+        if (!data) return;
         
-        if (data.barcode) row.querySelector('.barcode').value = data.barcode;
-        if (data.rack) row.querySelector('.rack').value = data.rack;
-        if (data.hsn_code) row.querySelector('.hsnCode').value = data.hsn_code;
+        row.querySelector('.gst').value = data.gst_percent || 0;
+        row.querySelector('.barcode').value = data.barcode || '';
+        row.querySelector('.rack').value = data.rack || '';
+        row.querySelector('.hsnCode').value = data.hsn_code || '';
+        if (data.mrp) row.querySelector('.mrp').value = data.mrp;
+        if (data.purchase_rate) row.querySelector('.rate').value = data.purchase_rate;
         
         calculateRowTotal(row);
         calculateTotal();
@@ -300,12 +365,10 @@
 
     function calculateRowTotal(row) {
         const qty = parseFloat(row.querySelector('.qty')?.value) || 0;
-        const freeQty = parseFloat(row.querySelector('.freeQty')?.value) || 0;
-        const totalQty = qty + freeQty;
         const rate = parseFloat(row.querySelector('.rate')?.value) || 0;
         const gst = parseFloat(row.querySelector('.gst')?.value) || 0;
-        let discP = parseFloat(row.querySelector('.discP')?.value) || 0;
-        let discA = parseFloat(row.querySelector('.discA')?.value) || 0;
+        const discP = parseFloat(row.querySelector('.discP')?.value) || 0;
+        const discA = parseFloat(row.querySelector('.discA')?.value) || 0;
         
         const basic = qty * rate;
         const discountPercentAmount = (basic * discP) / 100;
@@ -324,10 +387,7 @@
 
     function calculateTotal() {
         let subtotal = 0;
-        document.querySelectorAll('.amount').forEach(el => {
-            const val = parseFloat(el.value);
-            if (!isNaN(val)) subtotal += val;
-        });
+        document.querySelectorAll('.amount').forEach(el => subtotal += parseFloat(el.value) || 0);
         
         const extra = parseFloat(document.getElementById('extraCharges')?.value) || 0;
         const round = parseFloat(document.getElementById('roundOff')?.value) || 0;
@@ -337,90 +397,34 @@
         document.getElementById('grandTotal').innerText = grand.toFixed(2);
     }
 
-    // Event Delegation
-    document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('itemSelect')) {
-            const itemId = e.target.value;
-            const row = e.target.closest('tr');
-            
-            const selectedItems = [...document.querySelectorAll('.itemSelect')].filter(select => select.value === itemId && select !== e.target);
-            if (selectedItems.length > 0) {
-                alert('This item is already selected in another row!');
-                e.target.value = '';
-                return;
-            }
-            
-            if (itemId) {
-                e.target.disabled = true;
-                loadItemData(itemId, row).finally(() => {
-                    e.target.disabled = false;
-                });
-            } else {
-                row.querySelector('.gst').value = '';
-                row.querySelector('.barcode').value = '';
-                row.querySelector('.rack').value = '';
-                row.querySelector('.hsnCode').value = '';
-                calculateRowTotal(row);
-                calculateTotal();
-            }
-        }
-    });
-
     document.addEventListener('input', function(e) {
         const row = e.target.closest('tr');
         if (!row) return;
         
-        if (e.target.classList.contains('qty') || e.target.classList.contains('freeQty') || 
-            e.target.classList.contains('rate') || e.target.classList.contains('gst') || 
-            e.target.classList.contains('discP') || e.target.classList.contains('discA')) {
+        if (e.target.matches('.qty, .freeQty, .rate, .gst, .discP, .discA')) {
+            if (e.target.classList.contains('discP')) {
+                const val = parseFloat(e.target.value) || 0;
+                if (val > 100) e.target.value = 100;
+                if (val > 0) row.querySelector('.discA').value = 0;
+            }
+            if (e.target.classList.contains('discA')) {
+                const val = parseFloat(e.target.value) || 0;
+                if (val > 0) row.querySelector('.discP').value = 0;
+            }
             calculateRowTotal(row);
             calculateTotal();
         }
     });
 
-    document.addEventListener('input', function(e) {
-        const row = e.target.closest('tr');
-        if (!row) return;
-        
-        if (e.target.classList.contains('discP')) {
-            const discP = parseFloat(e.target.value) || 0;
-            if (discP > 100) e.target.value = 100;
-            const discAField = row.querySelector('.discA');
-            if (discAField && discP > 0) discAField.value = 0;
-            calculateRowTotal(row);
-            calculateTotal();
-        }
-        
-        if (e.target.classList.contains('discA')) {
-            const discPField = row.querySelector('.discP');
-            const discA = parseFloat(e.target.value) || 0;
-            if (discPField && discA > 0) discPField.value = 0;
-            calculateRowTotal(row);
-            calculateTotal();
-        }
-    });
-
-    // Keyboard Navigation
     document.addEventListener('keydown', function(e) {
-        if (e.key === "Enter" && !e.target.closest('button')) {
+        if (e.key === "Enter" && !e.target.closest('.ts-control')) {
             e.preventDefault();
-            const inputs = [...document.querySelectorAll('#purchaseForm input, #purchaseForm select')];
-            const currentIndex = inputs.indexOf(document.activeElement);
-            if (currentIndex > -1 && currentIndex < inputs.length - 1) {
-                inputs[currentIndex + 1].focus();
-            }
-        }
-        
-        if (e.key === "Delete" && e.ctrlKey && e.target.closest('tr')) {
-            const row = e.target.closest('tr');
-            if (row && document.querySelectorAll('#purchaseTable tbody tr').length > 1) {
-                const deleteBtn = row.querySelector('.btn-danger');
-                if (deleteBtn) removeRow(deleteBtn);
-            }
+            const inputs = [...document.querySelectorAll('#purchaseForm input:not([readonly]), #purchaseForm select:not(.itemSelect)')];
+            const idx = inputs.indexOf(document.activeElement);
+            if (idx > -1 && idx < inputs.length - 1) inputs[idx + 1].focus();
         }
     });
 
-    // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         addRow();
         
@@ -428,173 +432,64 @@
         document.getElementById('roundOff')?.addEventListener('input', calculateTotal);
         
         document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-            let hasError = false;
+            let errors = [];
+            const rows = document.querySelectorAll('#purchaseTable tbody tr');
             
-            document.querySelectorAll('.qty').forEach(qty => {
-                const qtyVal = parseFloat(qty.value);
-                const freeQtyVal = parseFloat(qty.closest('tr').querySelector('.freeQty')?.value) || 0;
-                const totalQty = qtyVal + freeQtyVal;
-                if (isNaN(qtyVal) || qtyVal <= 0 || totalQty <= 0) {
-                    hasError = true;
-                }
+            rows.forEach((row, i) => {
+                if (!row.querySelector('.itemSelect')?.value) errors.push(`Row ${i+1}: Select an item`);
+                if ((parseFloat(row.querySelector('.qty')?.value) || 0) <= 0) errors.push(`Row ${i+1}: Qty > 0 required`);
+                if (!row.querySelector('.batchNumber')?.value) errors.push(`Row ${i+1}: Batch number required`);
+                if (!row.querySelector('.expiryDate')?.value) errors.push(`Row ${i+1}: Expiry date required`);
+                if ((parseFloat(row.querySelector('.rate')?.value) || 0) <= 0) errors.push(`Row ${i+1}: Rate > 0 required`);
             });
             
-            document.querySelectorAll('.itemSelect').forEach(select => {
-                if (!select.value) {
-                    hasError = true;
-                }
-            });
-            
-            document.querySelectorAll('.batchNumber').forEach(input => {
-                if (!input.value.trim()) {
-                    hasError = true;
-                }
-            });
-            
-            document.querySelectorAll('.expiryDate').forEach(input => {
-                if (!input.value) {
-                    hasError = true;
-                }
-            });
-            
-            if (hasError) {
+            if (errors.length) {
                 e.preventDefault();
-                alert('Please fill all required fields:\n- Select item\n- Enter quantity > 0\n- Enter batch number\n- Select expiry date');
+                alert(errors.join('\n'));
             }
         });
     });
 </script>
 
 <style>
-    /* Gradients */
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    .ts-wrapper { min-width: 150px; }
+    .ts-control { 
+        border: 1px solid #e2e8f0 !important; 
+        padding: 2px 6px !important; 
+        min-height: 29px !important; 
+        font-size: 0.8rem !important; 
     }
-    .btn-gradient-primary {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        border: none;
-        color: white;
-        transition: all 0.3s ease;
+    .ts-dropdown { 
+        z-index: 99999 !important; 
+        max-height: 250px !important; 
+        min-width: 250px !important; 
     }
-    .btn-gradient-primary:hover {
-        background: linear-gradient(135deg, #163158 0%, #1f3d6e 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-        color: white;
-    }
-    .btn-gradient-success {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        border: none;
-        color: white;
-        transition: all 0.3s ease;
-    }
-    .btn-gradient-success:hover {
-        background: linear-gradient(135deg, #0d7a6f 0%, #2bc46a 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-        color: white;
-    }
-    .text-gradient {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-    }
-    .bg-gradient-light {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    }
-    .bg-white-20 {
-        background: rgba(255,255,255,0.2);
-    }
+    .ts-dropdown .option { padding: 5px 10px !important; }
     
-    /* Form Controls */
-    .form-control-lg, .form-select-lg {
-        font-size: 0.95rem;
-        padding: 0.6rem 1rem;
-        border-radius: 0.5rem;
-    }
-    .form-control, .form-select {
-        border: 1px solid #e2e8f0;
-        transition: all 0.2s ease;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: #2a5298;
-        box-shadow: 0 0 0 0.2rem rgba(42, 82, 152, 0.15);
-    }
+    .bg-gradient-primary { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+    .btn-gradient-primary { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); border: none; color: white; }
+    .btn-gradient-primary:hover { background: linear-gradient(135deg, #163158 0%, #1f3d6e 100%); color: white; }
+    .btn-gradient-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border: none; color: white; }
+    .btn-gradient-success:hover { background: linear-gradient(135deg, #0d7a6f 0%, #2bc46a 100%); color: white; }
+    .text-gradient { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .bg-gradient-light { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
+    .bg-white-20 { background: rgba(255,255,255,0.2); }
     
-    /* Table Styles */
-    .table th {
-        font-weight: 600;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom-width: 1px;
-        background-color: #f8fafc;
-    }
-    .table td {
-        vertical-align: middle;
-        padding: 0.5rem;
-    }
-    input[readonly] {
-        background-color: #f8fafc;
-        cursor: not-allowed;
-    }
+    .form-control, .form-select { font-size: 0.85rem; padding: 0.35rem 0.6rem; }
+    .form-control-sm, .form-select-sm { font-size: 0.75rem; padding: 0.2rem 0.3rem; }
     
-    /* Card & Table Responsive */
-    .card {
-        border-radius: 1rem;
-        overflow: hidden;
-    }
-    .card-header {
-        border-bottom: none;
-    }
-    .table-responsive {
-        border-radius: 0.75rem;
-        overflow-x: auto;
-    }
+    .table { font-size: 0.75rem; }
+    .table th { font-weight: 600; background-color: #f8fafc; white-space: nowrap; padding: 0.5rem 0.25rem; }
+    .table td { padding: 0.25rem; vertical-align: middle; }
+    .table input, .table select { font-size: 0.75rem; padding: 0.15rem 0.25rem; }
     
-    /* Buttons */
-    .rounded-pill {
-        border-radius: 50px !important;
-    }
-    .rounded-circle {
-        width: 32px !important;
-        height: 32px !important;
-        padding: 0 !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    .btn-outline-secondary {
-        border-color: #cbd5e1;
-        color: #64748b;
-    }
-    .btn-outline-secondary:hover {
-        background-color: #f1f5f9;
-        border-color: #94a3b8;
-        color: #475569;
-    }
+    .sticky-top { position: sticky; top: 0; z-index: 10; }
     
-    /* Input Group */
-    .input-group-text {
-        background-color: #f8fafc;
-        border: 1px solid #e2e8f0;
-        color: #64748b;
-    }
+    .rounded-circle { width: 24px !important; height: 24px !important; }
+    .rounded-pill { border-radius: 50px !important; }
     
-    /* Responsive */
-    @media (max-width: 768px) {
-        .card-body {
-            padding: 1rem !important;
-        }
-        .table th, .table td {
-            font-size: 0.7rem;
-            padding: 0.3rem;
-        }
-        .btn {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-        }
-    }
+    input[readonly] { background-color: #f8fafc; }
+    
+    #purchaseTable tbody tr:hover { background-color: #f8fafc; }
 </style>
 @endsection

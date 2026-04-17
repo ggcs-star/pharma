@@ -34,10 +34,11 @@ use App\Http\Controllers\Supplier\SupplierOrderController;
 use App\Http\Controllers\Supplier\SupplierItemController;
 use App\Http\Controllers\Supplier\SupplierDashboardController;
 use Illuminate\Http\Request;
-Route::get('/admin/prescription/{id}', [AdminController::class, 'viewPrescription'])
-    ->name('admin.prescription.view');
-Route::get('/search-items', [PurchaseController::class, 'searchItems']);
-Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create']);
+// Route::get('/admin/prescription/{id}', [AdminController::class, 'viewPrescription'])
+//     ->name('admin.prescription.view');
+Route::get('/purchase/search-item', [PurchaseController::class, 'searchItems']);     Route::get('/recent-items', [PurchaseController::class, 'recentItems'])->name('items.recent');
+    Route::post('/track-recent-item', [PurchaseController::class, 'trackRecentItem'])->name('items.track');
+Route::get('/search-items', [PurchaseController::class, 'ajaxSearch']);Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create']);
 Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
 Route::get('/customer-ledger', [CustomerLedgerController::class, 'index'])->name('customer.ledger');
 
@@ -302,6 +303,10 @@ Route::middleware(['auth'])->group(function () {
 
         Route::delete('/{purchase}', [PurchaseController::class, 'destroy'])
             ->name('purchase.destroy');
+                Route::get('/get-item/{id}', [PurchaseController::class, 'getItem'])->name('get-item');
+
+                Route::get('/search-items', [PurchaseController::class, 'ajaxSearch'])->name('search-items');
+
 
     });
 

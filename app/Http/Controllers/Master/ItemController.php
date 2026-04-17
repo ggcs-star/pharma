@@ -22,20 +22,53 @@ class ItemController extends Controller
 /*----------------------------------------------------
 ITEM LIST
 ----------------------------------------------------*/
-public function index()
+public function index(Request $request)
 {
-    $items = Item::with([
+    $query = Item::with([
         'manufacturer',
         'category',
         'subCategory',
         'unit',
         'packType',
         'images'
-    ])->latest()->paginate(20);
+    ]);
 
-    return view('master.items.index', compact('items'));
+    // 🔍 SEARCH
+    if ($request->search) {
+        $query->where(function ($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->search . '%')
+              ->orWhere('brand', 'like', '%' . $request->search . '%')
+              ->orWhere('molecule', 'like', '%' . $request->search . '%');
+        });
+    }
+
+    // 🏭 MANUFACTURER
+    if ($request->manufacturer) {
+        $query->where('manufacturer_id', $request->manufacturer);
+    }
+
+    // 📦 CATEGORY
+    if ($request->category) {
+        $query->where('category_id', $request->category);
+    }
+
+    // 🚦 STATUS
+    if ($request->status == 'active') {
+        $query->where('inactive', 0);
+    }
+
+    if ($request->status == 'inactive') {
+        $query->where('inactive', 1);
+    }
+
+    $items = $query->latest()->paginate(20)->withQueryString();
+
+    return view('master.items.index', [
+        'items' => $items,
+        'manufacturers' => Manufacturer::all(),
+        'categories' => Category::all(),
+    ]);
 }
-
 
 // public function import(Request $request)
 // {
@@ -758,9 +791,9 @@ public function store(Request $request)
 
         $item = Item::create([
             'name' => $request->name,
-            'slug' => Str::slug($request->name),
+'slug' => $this->generateSlug($request->name),  
+          'main_image' => $mainImagePath,
 
-            'main_image' => $mainImagePath,
 
             'description' => $request->description,
             'product_highlights' => $request->product_highlights,
@@ -903,8 +936,7 @@ public function update(Request $request, Item $item)
         // 🔹 UPDATE ALL DATA (IMPORTANT 🔥)
         $item->update([
             'name' => $request->name,
-            'slug' => Str::slug($request->name),
-
+'slug' => $this->generateSlug($request->name, $item->id),
             'description' => $request->description,
             'product_highlights' => $request->product_highlights,
             'brand' => $request->brand,
@@ -1136,6 +1168,22 @@ public function destroy(Item $item)
 
         return back()->with('error', $e->getMessage());
     }
+}
+private function generateSlug($name, $id = null)
+{
+    $baseSlug = \Illuminate\Support\Str::slug($name);
+    $slug = $baseSlug;
+    $i = 1;
+
+    while (
+        \App\Models\Item::where('slug', $slug)
+            ->when($id, fn($q) => $q->where('id', '!=', $id))
+            ->exists()
+    ) {
+        $slug = $baseSlug . '-' . $i++;
+    }
+
+    return $slug;
 }
 
 }
