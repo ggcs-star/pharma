@@ -30,8 +30,59 @@
 </div>
         </div>
 
-        <div class="card-body">
+<div class="card-body">
 
+    <!-- 🔍 SEARCH + FILTER -->
+    <form method="GET" action="{{ route('master.items.index') }}" class="mb-4">
+        <div class="row g-2 align-items-end">
+
+            <div class="col-md-3">
+                <input type="text" name="search" value="{{ request('search') }}"
+                       class="form-control"
+                       placeholder="Search item...">
+            </div>
+
+            <div class="col-md-2">
+                <select name="manufacturer" class="form-select">
+                    <option value="">Manufacturer</option>
+                    @foreach($manufacturers as $m)
+                        <option value="{{ $m->id }}"
+                        {{ request('manufacturer') == $m->id ? 'selected' : '' }}>
+                            {{ $m->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="category" class="form-select">
+                    <option value="">Category</option>
+                    @foreach($categories as $c)
+                        <option value="{{ $c->id }}"
+                        {{ request('category') == $c->id ? 'selected' : '' }}>
+                            {{ $c->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="status" class="form-select">
+                    <option value="">Status</option>
+                    <option value="active" {{ request('status')=='active'?'selected':'' }}>Active</option>
+                    <option value="inactive" {{ request('status')=='inactive'?'selected':'' }}>Inactive</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-primary w-100">Search</button>
+                <a href="{{ route('master.items.index') }}" class="btn btn-secondary w-100">Reset</a>
+            </div>
+
+        </div>
+    </form>
+
+    <!-- SUCCESS -->
             <!-- SUCCESS -->
             @if(session('success'))
                 <div class="alert alert-success">

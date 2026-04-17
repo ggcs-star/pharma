@@ -67,7 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* ---------- CHECKOUT ---------- */
-    Route::post('/checkout', [CheckoutController::class, 'checkout']);
+    // Route::post('/checkout', [CheckoutController::class, 'checkout']);
 
     /* ---------- ORDER ---------- */
     Route::prefix('orders')->group(function () {

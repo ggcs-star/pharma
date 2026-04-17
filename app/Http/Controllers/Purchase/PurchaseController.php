@@ -575,17 +575,36 @@ public function edit($id)
             return back()->with('error', 'Failed to delete purchase: ' . $e->getMessage());
         }
     }
-    public function searchItems(Request $request)
+public function searchItems(Request $request)
 {
-    $search = $request->q;
+    try {
+        $search = $request->get('search', '');
 
-    $items = Item::query()
-        ->when($search, function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%");
-        })
-        ->limit(20) // 🔥 only 20 items
-        ->get(['id', 'name']);
+        if (!$search || strlen($search) < 2) {
+            return response()->json([]);
+        }
 
-    return response()->json($items);
+        // normalize input
+        $search = strtolower(str_replace('-', ' ', $search));
+        $words = explode(' ', $search);
+
+        $query = Item::query();
+
+        foreach ($words as $word) {
+            $query->whereRaw(
+                "REPLACE(LOWER(name), '-', ' ') LIKE ?", 
+                ["%{$word}%"]
+            );
+        }
+
+        $items = $query->limit(10)
+            ->get(['id', 'name', 'gst_percent']);
+
+        return response()->json($items);
+
+    } catch (\Exception $e) {
+        \Log::error('Search Error: ' . $e->getMessage());
+        return response()->json([]);
+    }
 }
 }
