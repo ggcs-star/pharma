@@ -34,6 +34,7 @@ use App\Http\Controllers\Supplier\SupplierOrderController;
 use App\Http\Controllers\Supplier\SupplierItemController;
 use App\Http\Controllers\Supplier\SupplierDashboardController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\StockController;
 // Route::get('/admin/prescription/{id}', [AdminController::class, 'viewPrescription'])
 //     ->name('admin.prescription.view');
 Route::get('/purchase/search-item', [PurchaseController::class, 'searchItems']);     Route::get('/recent-items', [PurchaseController::class, 'recentItems'])->name('items.recent');
@@ -361,8 +362,8 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-
-
+Route::get('/stock', [StockController::class, 'index'])->name('stock.index');
+Route::get('/stock/{item}', [StockController::class, 'show'])->name('stock.show');
 
 });
 Route::get('/supplier/login', [SupplierAuthController::class, 'showLogin'])->name('supplier.login');

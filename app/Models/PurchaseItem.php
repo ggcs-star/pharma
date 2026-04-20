@@ -80,4 +80,6 @@ class PurchaseItem extends Model
     {
         return $query->whereRaw('quantity > COALESCE(returned_quantity, 0)');
     }
+
+    
 }
