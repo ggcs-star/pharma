@@ -8,7 +8,9 @@
     <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-1 text-gray-800">Customers</h1>
+            <h1 class="h3 mb-1 text-gray-800">
+                <i class="fas fa-users text-primary me-2"></i>Customers
+            </h1>
             <p class="text-muted small mb-0">Manage your customer database</p>
         </div>
         <a href="{{ route('customers.create') }}" class="btn btn-primary rounded-pill px-4 shadow-sm">
@@ -16,63 +18,63 @@
         </a>
     </div>
 
-    <!-- Stats Cards -->
+    <!-- Stats Cards - Lighter Colors -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 bg-gradient-primary text-white">
+            <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Total Customers</h6>
-                            <h2 class="mb-0 fw-bold">{{ $customers->total() }}</h2>
+                            <h6 class="text-muted mb-1">Total Customers</h6>
+                            <h2 class="mb-0 fw-bold text-primary">{{ $customers->total() }}</h2>
                         </div>
-                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
-                            <i class="fas fa-users fa-2x"></i>
+                        <div class="rounded-3 p-3" style="background: #eef2ff;">
+                            <i class="fas fa-users fa-2x text-primary"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 bg-gradient-warning text-white">
+            <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">VIP Customers</h6>
-                            <h2 class="mb-0 fw-bold">{{ $customers->where('customer_type', 'vip')->count() }}</h2>
+                            <h6 class="text-muted mb-1">VIP Customers</h6>
+                            <h2 class="mb-0 fw-bold text-warning">{{ $customers->where('customer_type', 'vip')->count() }}</h2>
                         </div>
-                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
-                            <i class="fas fa-crown fa-2x"></i>
+                        <div class="rounded-3 p-3" style="background: #fefce8;">
+                            <i class="fas fa-crown fa-2x text-warning"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 bg-gradient-success text-white">
+            <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Avg. Discount</h6>
-                            <h2 class="mb-0 fw-bold">{{ round($customers->avg('discount') ?? 0) }}%</h2>
+                            <h6 class="text-muted mb-1">Avg. Discount</h6>
+                            <h2 class="mb-0 fw-bold text-success">{{ round($customers->avg('discount') ?? 0) }}%</h2>
                         </div>
-                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
-                            <i class="fas fa-percent fa-2x"></i>
+                        <div class="rounded-3 p-3" style="background: #ecfdf5;">
+                            <i class="fas fa-percent fa-2x text-success"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-4 bg-gradient-info text-white">
+            <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Active (30 days)</h6>
-                            <h2 class="mb-0 fw-bold">{{ $customers->where('last_buy_date', '>=', now()->subDays(30))->count() }}</h2>
+                            <h6 class="text-muted mb-1">Active (30 days)</h6>
+                            <h2 class="mb-0 fw-bold text-info">{{ $customers->where('last_buy_date', '>=', now()->subDays(30))->count() }}</h2>
                         </div>
-                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
-                            <i class="fas fa-calendar-check fa-2x"></i>
+                        <div class="rounded-3 p-3" style="background: #ecfeff;">
+                            <i class="fas fa-calendar-check fa-2x text-info"></i>
                         </div>
                     </div>
                 </div>
@@ -83,24 +85,70 @@
     <!-- Main Card -->
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-0 py-3 px-4">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div class="d-flex gap-3">
-                    <div class="position-relative">
-                        <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted small"></i>
-                        <input type="text" id="searchInput" class="form-control rounded-pill ps-5" placeholder="Search customers..." style="width: 250px;">
+            <form method="GET" action="{{ route('customers.index') }}" id="filterForm">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
+                        <div class="position-relative">
+                            <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                            <input type="text" 
+                                   name="search" 
+                                   class="form-control rounded-pill ps-5" 
+                                   placeholder="Search by name, contact..." 
+                                   value="{{ request('search') }}"
+                                   style="background: #f8f9fa;">
+                        </div>
                     </div>
-                    <div>
-                        <select id="typeFilter" class="form-select rounded-pill">
-                            <option value="all">All Types</option>
-                            <option value="vip">VIP</option>
-                            <option value="regular">Regular</option>
+                    <div class="col-md-2">
+                        <select name="customer_type" class="form-select rounded-pill" style="background: #f8f9fa;" onchange="this.form.submit()">
+                            <option value="all" {{ request('customer_type') == 'all' ? 'selected' : '' }}>All Types</option>
+                            <option value="vip" {{ request('customer_type') == 'vip' ? 'selected' : '' }}>👑 VIP</option>
+                            <option value="regular" {{ request('customer_type') == 'regular' ? 'selected' : '' }}>👤 Regular</option>
                         </select>
                     </div>
+                    <div class="col-md-2">
+                        <select name="doctor_id" class="form-select rounded-pill" style="background: #f8f9fa;" onchange="this.form.submit()">
+                            <option value="">All Doctors</option>
+                            @foreach($doctors ?? [] as $doctor)
+                                <option value="{{ $doctor->id }}" {{ request('doctor_id') == $doctor->id ? 'selected' : '' }}>
+                                    👨‍⚕️ {{ $doctor->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="discount_range" class="form-select rounded-pill" style="background: #f8f9fa;" onchange="this.form.submit()">
+                            <option value="">All Discounts</option>
+                            <option value="0" {{ request('discount_range') == '0' ? 'selected' : '' }}>0% Discount</option>
+                            <option value="1_10" {{ request('discount_range') == '1_10' ? 'selected' : '' }}>🏷️ 1-10%</option>
+                            <option value="11_20" {{ request('discount_range') == '11_20' ? 'selected' : '' }}>🏷️ 11-20%</option>
+                            <option value="21_plus" {{ request('discount_range') == '21_plus' ? 'selected' : '' }}>🏷️ 21%+</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select name="per_page" class="form-select rounded-pill" style="background: #f8f9fa;" onchange="this.form.submit()">
+                            <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10 per page</option>
+                            <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 per page</option>
+                            <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50 per page</option>
+                            <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 per page</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        @if(request()->anyFilled(['search', 'customer_type', 'doctor_id', 'discount_range']))
+                            <a href="{{ route('customers.index') }}" class="btn btn-light rounded-pill w-100">
+                                <i class="fas fa-times"></i>
+                            </a>
+                        @endif
+                    </div>
                 </div>
-                <div class="text-muted small">
-                    <i class="fas fa-sync-alt me-1"></i> Last updated: {{ now()->format('d M Y, h:i A') }}
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Showing {{ $customers->firstItem() ?? 0 }} to {{ $customers->lastItem() ?? 0 }} of {{ $customers->total() }} customers
+                        </small>
+                    </div>
                 </div>
-            </div>
+            </form>
         </div>
 
         <div class="card-body p-0">
@@ -111,41 +159,73 @@
                 </div>
             @endif
 
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show m-3 rounded-3" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="customersTable">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr class="text-uppercase small text-muted">
-                            <th width="60" class="py-3 fw-semibold">ID</th>
-                            <th class="py-3 fw-semibold">Customer</th>
-                            <th class="py-3 fw-semibold">Contact</th>
-                            <th class="py-3 fw-semibold">Type</th>
-                            <th class="py-3 fw-semibold">Doctor</th>
-                            <th class="py-3 fw-semibold">City</th>
-                            <th class="py-3 fw-semibold">Discount</th>
-                            <th class="py-3 fw-semibold">Last Purchase</th>
-                            <th width="120" class="py-3 fw-semibold text-center">Actions</th>
+                            <th width="60" class="py-3 fw-semibold">
+                                <i class="fas fa-hashtag me-1"></i> ID
+                            </th>
+                            <th class="py-3 fw-semibold">
+                                <i class="fas fa-user me-1"></i> Customer
+                            </th>
+                            <th class="py-3 fw-semibold">
+                                <i class="fas fa-phone me-1"></i> Contact
+                            </th>
+                            <th class="py-3 fw-semibold">
+                                <i class="fas fa-tag me-1"></i> Type
+                            </th>
+                            <th class="py-3 fw-semibold">
+                                <i class="fas fa-user-md me-1"></i> Doctor
+                            </th>
+                            <th class="py-3 fw-semibold">
+                                <i class="fas fa-city me-1"></i> City
+                            </th>
+                            <th class="py-3 fw-semibold">
+                                <i class="fas fa-percent me-1"></i> Discount
+                            </th>
+                            <th class="py-3 fw-semibold">
+                                <i class="fas fa-calendar me-1"></i> Last Purchase
+                            </th>
+                            <th width="120" class="py-3 fw-semibold text-center">
+                                <i class="fas fa-cog me-1"></i> Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($customers as $customer)
-                        <tr class="customer-row" data-type="{{ $customer->customer_type }}" data-name="{{ strtolower($customer->name) }}" data-contact="{{ $customer->contact }}">
+                        <tr>
                             <td class="fw-semibold text-muted">#{{ $customer->id }}</td>
                             <td>
                                 <div class="d-flex align-items-center gap-3">
-                                    <div class="avatar-circle bg-primary bg-opacity-10 text-primary">
+                                    <div class="avatar-circle">
                                         {{ strtoupper(substr($customer->name, 0, 2)) }}
                                     </div>
                                     <div>
                                         <div class="fw-semibold text-dark">{{ $customer->name }}</div>
-                                        <small class="text-muted">{{ $customer->email ?? 'No email' }}</small>
+                                        <small class="text-muted">
+                                            <i class="fas fa-envelope me-1"></i>{{ $customer->email ?? 'No email' }}
+                                        </small>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="d-flex flex-column">
-                                    <span><i class="fas fa-phone-alt text-muted me-2 small"></i>{{ $customer->contact }}</span>
+                                    <span>
+                                        <i class="fas fa-phone-alt text-muted me-2"></i>
+                                        {{ $customer->contact ?? '—' }}
+                                    </span>
                                     @if($customer->alt_contact)
-                                        <small class="text-muted">{{ $customer->alt_contact }}</small>
+                                        <small class="text-muted">
+                                            <i class="fas fa-mobile-alt me-2"></i>{{ $customer->alt_contact }}
+                                        </small>
                                     @endif
                                 </div>
                             </td>
@@ -162,23 +242,23 @@
                             </td>
                             <td>
                                 @if($customer->doctor && $customer->doctor->name)
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-user-md text-muted"></i>
-                                        <span>{{ $customer->doctor->name }}</span>
+                                    <div>
+                                        <i class="fas fa-user-md text-muted me-1"></i>
+                                        {{ $customer->doctor->name }}
+                                        @if($customer->doctor->specialization)
+                                            <br><small class="text-muted">{{ $customer->doctor->specialization }}</small>
+                                        @endif
                                     </div>
-                                    @if($customer->doctor->specialization)
-                                        <small class="text-muted ms-4">{{ $customer->doctor->specialization }}</small>
-                                    @endif
                                 @else
-                                    <span class="text-muted fst-italic">—</span>
+                                    <span class="text-muted">—</span>
                                 @endif
                             </td>
                             <td>
                                 @if($customer->city)
-                                    <i class="fas fa-location-dot text-muted me-1"></i>
+                                    <i class="fas fa-map-marker-alt text-muted me-1"></i>
                                     {{ $customer->city }}
                                 @else
-                                    <span class="text-muted fst-italic">—</span>
+                                    <span class="text-muted">—</span>
                                 @endif
                             </td>
                             <td>
@@ -193,11 +273,18 @@
                             <td>
                                 @if($customer->last_buy_date)
                                     <div class="d-flex flex-column">
-                                        <span><i class="far fa-calendar-alt text-muted me-1"></i>{{ \Carbon\Carbon::parse($customer->last_buy_date)->format('d M Y') }}</span>
-                                        <small class="text-muted">{{ \Carbon\Carbon::parse($customer->last_buy_date)->diffForHumans() }}</small>
+                                        <span>
+                                            <i class="far fa-calendar-alt text-muted me-1"></i>
+                                            {{ \Carbon\Carbon::parse($customer->last_buy_date)->format('d M Y') }}
+                                        </span>
+                                        <small class="text-muted">
+                                            {{ \Carbon\Carbon::parse($customer->last_buy_date)->diffForHumans() }}
+                                        </small>
                                     </div>
                                 @else
-                                    <span class="text-muted fst-italic">No purchases</span>
+                                    <span class="text-muted">
+                                        <i class="fas fa-shopping-cart me-1"></i>No purchases
+                                    </span>
                                 @endif
                             </td>
                             <td>
@@ -210,12 +297,12 @@
                                     </a>
                                     <form action="{{ route('customers.destroy', $customer->id) }}" 
                                           method="POST" 
-                                          class="d-inline">
+                                          class="d-inline"
+                                          onsubmit="return confirm('⚠️ Are you sure you want to delete {{ addslashes($customer->name) }}? This action cannot be undone.')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" 
                                                 class="btn-action btn-delete" 
-                                                onclick="return confirm('⚠️ Are you sure you want to delete {{ addslashes($customer->name) }}? This action cannot be undone.')"
                                                 data-bs-toggle="tooltip" 
                                                 title="Delete Customer">
                                             <i class="fas fa-trash-alt"></i>
@@ -244,10 +331,12 @@
 
             <div class="d-flex justify-content-between align-items-center p-4 border-top">
                 <div class="small text-muted">
-                    Showing <span id="showingStart">{{ $customers->firstItem() ?? 0 }}</span> to <span id="showingEnd">{{ $customers->lastItem() ?? 0 }}</span> of <span id="totalCount">{{ $customers->total() }}</span> results
+                    <i class="fas fa-chart-line me-1"></i>
+                    Showing <strong>{{ $customers->firstItem() ?? 0 }}</strong> to <strong>{{ $customers->lastItem() ?? 0 }}</strong> 
+                    of <strong>{{ $customers->total() }}</strong> results
                 </div>
                 <div>
-                    {{ $customers->links() }}
+                    {{ $customers->appends(request()->query())->links() }}
                 </div>
             </div>
         </div>
@@ -256,21 +345,7 @@
 
 @push('styles')
 <style>
-    /* Custom Gradients */
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    .bg-gradient-warning {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-    .bg-gradient-success {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    .bg-gradient-info {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-    }
-
-    /* Avatar Circle */
+    /* Avatar Circle - Lighter */
     .avatar-circle {
         width: 45px;
         height: 45px;
@@ -280,12 +355,14 @@
         justify-content: center;
         font-weight: 700;
         font-size: 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
     }
 
-    /* Badges */
+    /* Badges - Modern */
     .badge-vip {
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-        color: #78350f;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
         padding: 5px 12px;
         border-radius: 20px;
         font-size: 12px;
@@ -296,7 +373,7 @@
     }
     
     .badge-regular {
-        background: #e2e8f0;
+        background: #f1f5f9;
         color: #475569;
         padding: 5px 12px;
         border-radius: 20px;
@@ -317,9 +394,10 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
+        width: fit-content;
     }
 
-    /* Action Buttons */
+    /* Action Buttons - Modern */
     .btn-action {
         width: 34px;
         height: 34px;
@@ -368,17 +446,26 @@
     
     .table-hover tbody tr:hover {
         background-color: #f8fafc;
-        transform: scale(1.01);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
 
     /* Card Improvements */
     .card {
         transition: transform 0.2s, box-shadow 0.2s;
+        border: none !important;
     }
     
     .card:hover {
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+    }
+
+    /* Stats Cards */
+    .stats-card {
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
     }
 
     /* Custom Scrollbar */
@@ -405,54 +492,53 @@
         border-color: #667eea;
         box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
     }
+
+    /* Pagination Styling */
+    .pagination {
+        margin-bottom: 0;
+    }
+    
+    .page-link {
+        border: none;
+        color: #475569;
+        border-radius: 8px !important;
+        margin: 0 2px;
+    }
+    
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .page-link:hover {
+        background-color: #f1f5f9;
+        color: #1e293b;
+    }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-    // Live search functionality
+    // Auto-submit form on filter change
     document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchInput');
-        const typeFilter = document.getElementById('typeFilter');
-        const rows = document.querySelectorAll('.customer-row');
-        const showingStart = document.getElementById('showingStart');
-        const showingEnd = document.getElementById('showingEnd');
-        const totalCount = document.getElementById('totalCount');
-        
-        function filterTable() {
-            const searchTerm = searchInput.value.toLowerCase();
-            const typeValue = typeFilter.value;
-            let visibleCount = 0;
-            
-            rows.forEach(row => {
-                const name = row.getAttribute('data-name');
-                const contact = row.getAttribute('data-contact');
-                const type = row.getAttribute('data-type');
-                
-                const matchesSearch = name.includes(searchTerm) || contact.includes(searchTerm);
-                const matchesType = typeValue === 'all' || type === typeValue;
-                
-                if (matchesSearch && matchesType) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
+        // Auto-submit when dropdowns change
+        const filterSelects = document.querySelectorAll('#filterForm select');
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
             });
-            
-            // Update showing info
-            if (showingStart && showingEnd && totalCount) {
-                showingStart.textContent = visibleCount > 0 ? '1' : '0';
-                showingEnd.textContent = visibleCount;
-                // Note: This is simplified; in production, you'd want pagination-aware filtering
-            }
-        }
+        });
         
-        if (searchInput) {
-            searchInput.addEventListener('keyup', filterTable);
-        }
-        if (typeFilter) {
-            typeFilter.addEventListener('change', filterTable);
+        // Search with debounce
+        let searchTimeout;
+        const searchInput = document.querySelector('input[name="search"]');
+        if(searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    document.getElementById('filterForm').submit();
+                }, 500);
+            });
         }
         
         // Initialize tooltips

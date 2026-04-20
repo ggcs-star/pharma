@@ -35,6 +35,11 @@ use App\Http\Controllers\Supplier\SupplierItemController;
 use App\Http\Controllers\Supplier\SupplierDashboardController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\StockController;
+Route::get('/api/supplier-items/{id}', function ($id) {
+    return \App\Models\SupplierItemCatalog::with('item')
+        ->where('supplier_id', $id)
+        ->get();
+});
 // Route::get('/admin/prescription/{id}', [AdminController::class, 'viewPrescription'])
 //     ->name('admin.prescription.view');
 Route::get('/purchase/search-item', [PurchaseController::class, 'searchItems']);     Route::get('/recent-items', [PurchaseController::class, 'recentItems'])->name('items.recent');
@@ -207,8 +212,8 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 });
 
 Route::get('/', function () {
-    return view('landing');
-})->name('landing');
+    return redirect('/login');
+});
 
 /*
 |--------------------------------------------------------------------------
