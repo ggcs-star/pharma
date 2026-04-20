@@ -10,282 +10,195 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Customer List
-    |--------------------------------------------------------------------------
-    */
-
-    public function index()
+    // List with Search & Filters
+    public function index(Request $request)
     {
         try {
+            $query = Customer::with('doctor');
 
-            $customers = Customer::with('doctor')
-                ->latest()
-                ->paginate(10);
+            // Search
+            if ($request->search) {
+                $query->where(function($q) use ($request) {
+                    $q->where('name', 'like', "%{$request->search}%")
+                      ->orWhere('contact', 'like', "%{$request->search}%")
+                      ->orWhere('customer_code', 'like', "%{$request->search}%");
+                });
+            }
 
-            return view('master.customers.index', compact('customers'));
+            // Filters
+            if ($request->customer_type && $request->customer_type != 'all') {
+                $query->where('customer_type', $request->customer_type);
+            }
+            
+            if ($request->doctor_id) {
+                $query->where('doctor_id', $request->doctor_id);
+            }
+            
+            if ($request->discount_range) {
+                match($request->discount_range) {
+                    '0' => $query->where('discount', 0),
+                    '1_10' => $query->whereBetween('discount', [1, 10]),
+                    '11_20' => $query->whereBetween('discount', [11, 20]),
+                    '21_plus' => $query->where('discount', '>', 20),
+                    default => null
+                };
+            }
+
+            // Sorting
+            $sortBy = $request->sort_by ?? 'id';
+            $sortOrder = $request->sort_order ?? 'desc';
+            $query->orderBy($sortBy, $sortOrder);
+
+            // Pagination
+            $perPage = $request->per_page ?? 10;
+            $customers = $query->paginate($perPage)->withQueryString();
+            
+            $doctors = Doctor::all();
+
+            return view('master.customers.index', compact('customers', 'doctors'));
 
         } catch (\Exception $e) {
-
             return back()->with('error', $e->getMessage());
         }
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Create Form
-    |--------------------------------------------------------------------------
-    */
-
+    // Create Form
     public function create()
     {
         try {
-
             $doctors = Doctor::all();
-
             return view('master.customers.create', compact('doctors'));
-
         } catch (\Exception $e) {
-
-            return back()->with('error',$e->getMessage());
+            return back()->with('error', $e->getMessage());
         }
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Store Customer
-    |--------------------------------------------------------------------------
-    */
-
+    // Store Customer
     public function store(Request $request)
-{
+    {
+        DB::beginTransaction();
+        try {
+            $request->validate(['name' => 'required|string|max:255']);
 
-    DB::beginTransaction();
+            // Generate Customer Code
+            $lastCustomer = Customer::latest()->first();
+            $nextId = $lastCustomer ? $lastCustomer->id + 1 : 1;
+            $customerCode = 'C' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
-    try {
+            Customer::create([
+                'customer_code'      => $customerCode,
+                'name'               => $request->name,
+                'contact'            => $request->contact,
+                'flat_number'        => $request->flat_number,
+                'discount'           => $request->discount,
+                'customer_type'      => $request->customer_type,
+                'address'            => $request->address,
+                'doctor_id'          => $request->doctor_id,
+                'preferred_language' => $request->preferred_language,
+                'city'               => $request->city,
+                'pincode'            => $request->pincode,
+                'last_buy_date'      => null
+            ]);
 
-        $request->validate([
-            'name' => 'required|string|max:255'
-        ]);
-
-        /*
-        |----------------------------------
-        | Generate Customer Code
-        |----------------------------------
-        */
-
-        $lastCustomer = Customer::latest()->first();
-
-        $nextId = $lastCustomer ? $lastCustomer->id + 1 : 1;
-
-        $customerCode = 'C' . str_pad($nextId,4,'0',STR_PAD_LEFT);
-
-
-        Customer::create([
-
-            'customer_code'      => $customerCode,
-            'name'               => $request->name,
-            'contact'            => $request->contact,
-            'flat_number'        => $request->flat_number,
-            'discount'           => $request->discount,
-            'customer_type'      => $request->customer_type,
-            'address'            => $request->address,
-            'doctor_id'          => $request->doctor_id,
-            'preferred_language' => $request->preferred_language,
-            'city'               => $request->city,
-            'pincode'            => $request->pincode,
-            'last_buy_date'      => null
-        ]);
-
-
-        DB::commit();
-
-        return redirect()
-            ->route('customers.index')
-            ->with('success','Customer Added Successfully');
-
-    } catch (\Exception $e) {
-
-        DB::rollBack();
-
-        return back()->with('error',$e->getMessage());
+            DB::commit();
+            return redirect()->route('customers.index')->with('success', 'Customer Added Successfully');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', $e->getMessage());
+        }
     }
 
-}
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Edit Customer
-    |--------------------------------------------------------------------------
-    */
-
+    // Edit Customer
     public function edit(Customer $customer)
     {
         try {
-
             $doctors = Doctor::all();
-
-            return view('master.customers.edit', compact('customer','doctors'));
-
+            return view('master.customers.edit', compact('customer', 'doctors'));
         } catch (\Exception $e) {
-
-            return back()->with('error',$e->getMessage());
+            return back()->with('error', $e->getMessage());
         }
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Update Customer
-    |--------------------------------------------------------------------------
-    */
-
-   public function update(Request $request, Customer $customer)
-{
-
-    DB::beginTransaction();
-
-    try {
-
-        $request->validate([
-            'name' => 'required|string|max:255'
-        ]);
-
-        $customer->update([
-
-            'name'               => $request->name,
-            'contact'            => $request->contact,
-            'flat_number'        => $request->flat_number,
-            'discount'           => $request->discount,
-            'customer_type'      => $request->customer_type,
-            'address'            => $request->address,
-            'doctor_id'          => $request->doctor_id,
-            'preferred_language' => $request->preferred_language,
-            'city'               => $request->city,
-            'pincode'            => $request->pincode
-
-        ]);
-
-        DB::commit();
-
-        return redirect()
-            ->route('customers.index')
-            ->with('success','Customer Updated Successfully');
-
-    } catch (\Exception $e) {
-
-        DB::rollBack();
-
-        return back()->with('error',$e->getMessage());
-    }
-
-}
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Delete Customer
-    |--------------------------------------------------------------------------
-    */
-
-    public function destroy(Customer $customer)
+    // Update Customer
+    public function update(Request $request, Customer $customer)
     {
-
         DB::beginTransaction();
-
         try {
+            $request->validate(['name' => 'required|string|max:255']);
 
-            /*
-            |--------------------------------------------------------------------------
-            | ERP Safety Check
-            |--------------------------------------------------------------------------
-            */
-
-            if ($customer->current_balance != 0) {
-
-                return back()->with(
-                    'error',
-                    'Cannot delete customer with pending balance.'
-                );
-
-            }
-
-
-            $customer->delete();
-
+            $customer->update([
+                'name'               => $request->name,
+                'contact'            => $request->contact,
+                'flat_number'        => $request->flat_number,
+                'discount'           => $request->discount,
+                'customer_type'      => $request->customer_type,
+                'address'            => $request->address,
+                'doctor_id'          => $request->doctor_id,
+                'preferred_language' => $request->preferred_language,
+                'city'               => $request->city,
+                'pincode'            => $request->pincode
+            ]);
 
             DB::commit();
-
-
-            return redirect()
-                ->route('customers.index')
-                ->with('success','Customer Deleted Successfully');
-
-
+            return redirect()->route('customers.index')->with('success', 'Customer Updated Successfully');
         } catch (\Exception $e) {
-
             DB::rollBack();
-
-            return back()->with('error',$e->getMessage());
+            return back()->with('error', $e->getMessage());
         }
-
     }
-public function ajaxStore(Request $request)
-{
-    DB::beginTransaction();
 
-    try {
-
-        $request->validate([
-            'name' => 'required|string|max:255'
-        ]);
-
-        // 🔥 DUPLICATE MOBILE CHECK (ADD THIS)
-        if ($request->mobile) {
-            $existing = Customer::where('contact', $request->mobile)->first();
-            if ($existing) {
-                return response()->json([
-                    'success' => true,
-                    'customer' => $existing
-                ]);
+    // Delete Customer
+    public function destroy(Customer $customer)
+    {
+        DB::beginTransaction();
+        try {
+            if ($customer->current_balance != 0) {
+                return back()->with('error', 'Cannot delete customer with pending balance.');
             }
+
+            $customer->delete();
+            DB::commit();
+            return redirect()->route('customers.index')->with('success', 'Customer Deleted Successfully');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', $e->getMessage());
         }
-
-        // 🔥 CUSTOMER CODE
-        $lastCustomer = Customer::latest()->first();
-        $nextId = $lastCustomer ? $lastCustomer->id + 1 : 1;
-
-        $customerCode = 'C' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
-
-        $customer = Customer::create([
-            'customer_code' => $customerCode,
-            'name'          => $request->name,
-            'contact'       => $request->mobile,
-            'address'       => $request->address,
-'customer_type' => 'regular',
-            'last_buy_date' => null
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'customer' => $customer
-        ]);
-
-    } catch (\Exception $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
     }
-}
+
+    // AJAX Store for Quick Add
+    public function ajaxStore(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $request->validate(['name' => 'required|string|max:255']);
+
+            // Check existing customer
+            if ($request->mobile) {
+                $existing = Customer::where('contact', $request->mobile)->first();
+                if ($existing) {
+                    return response()->json(['success' => true, 'customer' => $existing]);
+                }
+            }
+
+            // Generate Code
+            $lastCustomer = Customer::latest()->first();
+            $nextId = $lastCustomer ? $lastCustomer->id + 1 : 1;
+            $customerCode = 'C' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
+            $customer = Customer::create([
+                'customer_code' => $customerCode,
+                'name'          => $request->name,
+                'contact'       => $request->mobile,
+                'address'       => $request->address,
+                'customer_type' => 'regular',
+                'last_buy_date' => null
+            ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'customer' => $customer]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

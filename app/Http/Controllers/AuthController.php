@@ -121,7 +121,7 @@ public function register(Request $request)
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('landing');
+            return redirect()->route('login');
         } catch (\Throwable $e) {
             Log::error('Logout error', [
                 'user_id' => Auth::id(),
