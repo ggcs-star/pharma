@@ -4,80 +4,77 @@
 
 @section('content')
 
-<div class="container-fluid px-3 px-lg-4">
-    <!-- Compact Page Header -->
-    <div class="d-flex justify-content-between align-items-center pt-2 pb-1 mb-3 border-bottom">
+<div class="container-fluid px-4 py-3">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h5 class="mb-0 fw-semibold text-dark">Purchase Management</h5>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 mt-1">
-                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}" class="text-decoration-none">Dashboard</a></li>
-                    <li class="breadcrumb-item active text-muted">Purchase List</li>
-                </ol>
-            </nav>
+            <h1 class="h3 mb-1 text-gray-800">
+                <i class="fas fa-shopping-cart text-primary me-2"></i>Purchase Management
+            </h1>
+            <p class="text-muted small mb-0">Track and manage all your purchase transactions</p>
         </div>
-        <a href="{{ route('purchase.create') }}" class="btn btn-sm btn-primary rounded-pill px-3">
-            <i class="fas fa-plus-circle me-1"></i> New Purchase
+        <a href="{{ route('purchase.create') }}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+            <i class="fas fa-plus-circle me-2"></i>New Purchase
         </a>
     </div>
 
-    <!-- Compact Statistics Cards -->
-    <div class="row g-2 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3">
-                <div class="card-body p-2 p-xl-3">
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 stats-card">
+                <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <span class="text-muted text-uppercase small fw-semibold">Total Purchases</span>
-                            <h4 class="mb-0 fw-bold mt-1">{{ $totalPurchases ?? $purchases->total() }}</h4>
+                            <h2 class="mb-0 fw-bold mt-1 text-primary">{{ $totalPurchases ?? $purchases->total() }}</h2>
                         </div>
-                        <div class="bg-primary bg-opacity-10 rounded-2 p-2">
-                            <i class="fas fa-shopping-cart text-primary fa-lg"></i>
+                        <div class="stats-icon bg-primary-soft">
+                            <i class="fas fa-shopping-cart fa-2x text-primary"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3">
-                <div class="card-body p-2 p-xl-3">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 stats-card">
+                <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <span class="text-muted text-uppercase small fw-semibold">Total Amount</span>
-                            <h4 class="mb-0 fw-bold mt-1">₹ {{ number_format($totalAmount ?? $purchases->sum('net_amount'), 2) }}</h4>
+                            <h2 class="mb-0 fw-bold mt-1 text-success">₹ {{ number_format($totalAmount ?? $purchases->sum('net_amount'), 2) }}</h2>
                         </div>
-                        <div class="bg-success bg-opacity-10 rounded-2 p-2">
-                            <i class="fas fa-rupee-sign text-success fa-lg"></i>
+                        <div class="stats-icon bg-success-soft">
+                            <i class="fas fa-rupee-sign fa-2x text-success"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3">
-                <div class="card-body p-2 p-xl-3">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 stats-card">
+                <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <span class="text-muted text-uppercase small fw-semibold">Total GST</span>
-                            <h4 class="mb-0 fw-bold mt-1">₹ {{ number_format($totalGST ?? $purchases->sum('total_gst'), 2) }}</h4>
+                            <h2 class="mb-0 fw-bold mt-1 text-info">₹ {{ number_format($totalGST ?? $purchases->sum('total_gst'), 2) }}</h2>
                         </div>
-                        <div class="bg-info bg-opacity-10 rounded-2 p-2">
-                            <i class="fas fa-percent text-info fa-lg"></i>
+                        <div class="stats-icon bg-info-soft">
+                            <i class="fas fa-percent fa-2x text-info"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-3">
-                <div class="card-body p-2 p-xl-3">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 stats-card">
+                <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <span class="text-muted text-uppercase small fw-semibold">Total Discount</span>
-                            <h4 class="mb-0 fw-bold mt-1">₹ {{ number_format($totalDiscount ?? $purchases->sum('total_discount'), 2) }}</h4>
+                            <h2 class="mb-0 fw-bold mt-1 text-warning">₹ {{ number_format($totalDiscount ?? $purchases->sum('total_discount'), 2) }}</h2>
                         </div>
-                        <div class="bg-warning bg-opacity-10 rounded-2 p-2">
-                            <i class="fas fa-tag text-warning fa-lg"></i>
+                        <div class="stats-icon bg-warning-soft">
+                            <i class="fas fa-tag fa-2x text-warning"></i>
                         </div>
                     </div>
                 </div>
@@ -85,25 +82,37 @@
         </div>
     </div>
 
-    <!-- Compact Search and Filter Card -->
-    <div class="card border-0 shadow-sm rounded-3 mb-3">
-        <div class="card-body p-3">
+    <!-- Filter Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 py-3 px-4">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-sliders-h text-primary me-2"></i>
+                <h6 class="mb-0 fw-semibold">Filter Options</h6>
+            </div>
+        </div>
+        <div class="card-body pt-0 px-4 pb-4">
             <form method="GET" action="{{ route('purchase.index') }}" id="filterForm">
-                <div class="row g-2 align-items-end">
+                <div class="row g-3">
                     <div class="col-md-3">
-                        <label class="form-label small text-muted mb-1">Search Invoice</label>
-                        <div class="input-group input-group-sm">
+                        <label class="form-label small fw-semibold text-muted mb-2">
+                            <i class="fas fa-search me-1"></i>Search Invoice
+                        </label>
+                        <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
-                                <i class="fas fa-search fa-sm"></i>
+                                <i class="fas fa-search text-muted"></i>
                             </span>
-                            <input type="text" name="search" class="form-control form-control-sm bg-light" 
-                                   placeholder="Invoice number..." 
+                            <input type="text" 
+                                   name="search" 
+                                   class="form-control bg-light" 
+                                   placeholder="Enter invoice number..." 
                                    value="{{ request('search') }}">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small text-muted mb-1">Supplier</label>
-                        <select name="supplier_id" class="form-select form-select-sm bg-light">
+                        <label class="form-label small fw-semibold text-muted mb-2">
+                            <i class="fas fa-building me-1"></i>Supplier
+                        </label>
+                        <select name="supplier_id" class="form-select bg-light">
                             <option value="">All Suppliers</option>
                             @foreach($suppliers ?? [] as $supplier)
                                 <option value="{{ $supplier->id }}" 
@@ -114,23 +123,53 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small text-muted mb-1">From Date</label>
-                        <input type="date" name="from_date" class="form-control form-control-sm bg-light" 
+                        <label class="form-label small fw-semibold text-muted mb-2">
+                            <i class="fas fa-calendar-alt me-1"></i>From Date
+                        </label>
+                        <input type="date" 
+                               name="from_date" 
+                               class="form-control bg-light" 
                                value="{{ request('from_date') }}">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small text-muted mb-1">To Date</label>
-                        <input type="date" name="to_date" class="form-control form-control-sm bg-light" 
+                        <label class="form-label small fw-semibold text-muted mb-2">
+                            <i class="fas fa-calendar-check me-1"></i>To Date
+                        </label>
+                        <input type="date" 
+                               name="to_date" 
+                               class="form-control bg-light" 
                                value="{{ request('to_date') }}">
                     </div>
                     <div class="col-md-2">
+                        <label class="form-label small fw-semibold text-muted mb-2">
+                            <i class="fas fa-list-ol me-1"></i>Per Page
+                        </label>
+                        <select name="per_page" class="form-select bg-light" onchange="this.form.submit()">
+                            <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10 entries</option>
+                            <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 entries</option>
+                            <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50 entries</option>
+                            <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 entries</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-sm btn-primary w-100 rounded-pill">
-                                <i class="fas fa-filter fa-sm me-1"></i> Filter
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                <i class="fas fa-filter me-2"></i>Apply Filters
                             </button>
-                            <a href="{{ route('purchase.index') }}" class="btn btn-sm btn-outline-secondary w-100 rounded-pill">
-                                <i class="fas fa-undo-alt fa-sm me-1"></i> Reset
-                            </a>
+                            @if(request()->anyFilled(['search', 'supplier_id', 'from_date', 'to_date']))
+                                <a href="{{ route('purchase.index') }}" class="btn btn-outline-secondary rounded-pill px-4">
+                                    <i class="fas fa-undo-alt me-2"></i>Clear Filters
+                                </a>
+                            @endif
+                            <div class="ms-auto">
+                                <small class="text-muted">
+                                    <i class="fas fa-chart-line me-1"></i>
+                                    Showing <strong>{{ $purchases->firstItem() ?? 0 }}</strong> to <strong>{{ $purchases->lastItem() ?? 0 }}</strong> 
+                                    of <strong>{{ $purchases->total() }}</strong> entries
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -138,97 +177,139 @@
         </div>
     </div>
 
-    <!-- Compact Purchases Table Card -->
-    <div class="card border-0 shadow-sm rounded-3">
+    <!-- Purchases Table -->
+    <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                            <th class="py-2 ps-3 small fw-semibold text-muted" width="5%">ID</th>
-                            <th class="py-2 small fw-semibold text-muted" width="12%">Invoice No</th>
-                            <th class="py-2 small fw-semibold text-muted" width="20%">Supplier</th>
-                            <th class="py-2 small fw-semibold text-muted" width="12%">Date</th>
-                            <th class="py-2 text-end small fw-semibold text-muted" width="10%">GST (₹)</th>
-                            <th class="py-2 text-end small fw-semibold text-muted" width="10%">Discount (₹)</th>
-                            <th class="py-2 text-end small fw-semibold text-muted" width="10%">Total (₹)</th>
-                            <th class="py-2 text-center small fw-semibold text-muted" width="10%">Status</th>
-                            <th class="py-2 text-center pe-3 small fw-semibold text-muted" width="11%">Actions</th>
+                            <th width="5%" class="py-3 ps-4 text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-hashtag me-1"></i> ID
+                            </th>
+                            <th width="12%" class="py-3 text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-file-invoice me-1"></i> Invoice No
+                            </th>
+                            <th width="20%" class="py-3 text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-building me-1"></i> Supplier
+                            </th>
+                            <th width="12%" class="py-3 text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-calendar me-1"></i> Date
+                            </th>
+                            <th width="10%" class="py-3 text-end text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-percent me-1"></i> GST
+                            </th>
+                            <th width="10%" class="py-3 text-end text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-tag me-1"></i> Discount
+                            </th>
+                            <th width="12%" class="py-3 text-end text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-rupee-sign me-1"></i> Total
+                            </th>
+                            <th width="10%" class="py-3 text-center text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-credit-card me-1"></i> Status
+                            </th>
+                            <th width="9%" class="py-3 text-center pe-4 text-uppercase small fw-semibold text-muted">
+                                <i class="fas fa-cog me-1"></i> Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($purchases as $purchase)
-                        <tr>
-                            <td class="align-middle ps-3 small">#{{ $purchase->id }}</td>
-                            <td class="align-middle">
-                                <span class="fw-semibold text-primary small">
-                                    PUR-{{ str_pad($purchase->invoice_number, 4, '0', STR_PAD_LEFT) }}
+                        @php
+                            $statusColor = match(strtolower($purchase->payment_type ?? 'pending')) {
+                                'cash', 'paid' => 'success',
+                                'pending' => 'danger',
+                                'credit' => 'warning',
+                                default => 'secondary'
+                            };
+                            $statusIcon = match(strtolower($purchase->payment_type ?? 'pending')) {
+                                'cash', 'paid' => 'fa-check-circle',
+                                'pending' => 'fa-clock',
+                                'credit' => 'fa-credit-card',
+                                default => 'fa-info-circle'
+                            };
+                            $statusText = match(strtolower($purchase->payment_type ?? 'pending')) {
+                                'cash', 'paid' => 'Paid',
+                                'pending' => 'Pending',
+                                'credit' => 'Credit',
+                                default => ucfirst($purchase->payment_type ?? 'Unknown')
+                            };
+                        @endphp
+                        <tr class="purchase-row">
+                            <td class="ps-4">
+                                <span class="fw-semibold text-muted">#{{ $purchase->id }}</span>
+                            </td>
+                            <td>
+                                <span class="invoice-number">
+                                    <i class="fas fa-receipt me-1"></i>
+                                    INV-{{ str_pad($purchase->invoice_number, 6, '0', STR_PAD_LEFT) }}
                                 </span>
                             </td>
-                            <td class="align-middle">
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-sm bg-light rounded-circle me-2 d-flex align-items-center justify-content-center">
-                                        <i class="fas fa-building text-muted fa-xs"></i>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="supplier-avatar">
+                                        <i class="fas fa-building"></i>
                                     </div>
                                     <div>
-                                        <div class="fw-semibold small">{{ $purchase->supplier->name ?? 'N/A' }}</div>
+                                        <div class="fw-semibold text-dark">{{ $purchase->supplier->name ?? 'N/A' }}</div>
                                         <small class="text-muted">ID: {{ $purchase->supplier_id }}</small>
                                     </div>
                                 </div>
                             </td>
-                            <td class="align-middle">
-                                <div class="small">
-                                    <i class="far fa-calendar-alt me-1 text-muted"></i>
-                                    {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d-m-Y') }}
+                            <td>
+                                <div class="purchase-date">
+                                    <i class="far fa-calendar-alt text-muted me-1"></i>
+                                    {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d M, Y') }}
                                 </div>
-                                <small class="text-muted">
+                                <small class="text-muted time-ago">
+                                    <i class="far fa-clock me-1"></i>
                                     {{ \Carbon\Carbon::parse($purchase->created_at)->diffForHumans() }}
                                 </small>
                             </td>
-                            <td class="align-middle text-end small text-info fw-semibold">
-                                ₹ {{ number_format($purchase->total_gst, 2) }}
+                            <td class="text-end">
+                                <span class="gst-badge">
+                                    <i class="fas fa-percent me-1"></i>
+                                    ₹ {{ number_format($purchase->total_gst, 2) }}
+                                </span>
                             </td>
-                            <td class="align-middle text-end small text-warning fw-semibold">
-                                ₹ {{ number_format($purchase->total_discount, 2) }}
+                            <td class="text-end">
+                                <span class="discount-badge">
+                                    <i class="fas fa-tag me-1"></i>
+                                    ₹ {{ number_format($purchase->total_discount, 2) }}
+                                </span>
                             </td>
-                            <td class="align-middle text-end small fw-bold text-success">
-                                ₹ {{ number_format($purchase->net_amount, 2) }}
+                            <td class="text-end">
+                                <span class="total-badge">
+                                    <i class="fas fa-rupee-sign me-1"></i>
+                                    {{ number_format($purchase->net_amount, 2) }}
+                                </span>
                             </td>
-                            <td class="align-middle text-center">
-                                @if(strtolower($purchase->payment_type ?? 'pending') == 'cash')
-                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1 small fw-semibold">
-                                        <i class="fas fa-check-circle me-1"></i> Paid
-                                    </span>
-                                @elseif(strtolower($purchase->payment_type ?? 'pending') == 'pending')
-                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1 small fw-semibold">
-                                        <i class="fas fa-clock me-1"></i> Pending
-                                    </span>
-                                @else
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1 small fw-semibold">
-                                        <i class="fas fa-credit-card me-1"></i> {{ $purchase->payment_type ?? 'Unknown' }}
-                                    </span>
-                                @endif
+                            <td class="text-center">
+                                <span class="status-badge status-{{ $statusColor }}">
+                                    <i class="fas {{ $statusIcon }} me-1"></i>
+                                    {{ $statusText }}
+                                </span>
                             </td>
-                            <td class="align-middle text-center pe-3">
-                                <div class="btn-group btn-group-sm" role="group">
+                            <td class="text-center pe-4">
+                                <div class="action-buttons">
                                     <a href="{{ route('purchase.show', $purchase->id) }}" 
-                                       class="btn btn-sm btn-outline-info rounded-start-pill" 
+                                       class="btn-action btn-view" 
                                        data-bs-toggle="tooltip" 
                                        title="View Details">
-                                        <i class="fas fa-eye fa-xs"></i>
+                                        <i class="fas fa-eye"></i>
                                     </a>
                                     <a href="{{ route('purchase.edit', $purchase->id) }}" 
-                                       class="btn btn-sm btn-outline-warning"
+                                       class="btn-action btn-edit" 
                                        data-bs-toggle="tooltip" 
                                        title="Edit Purchase">
-                                        <i class="fas fa-edit fa-xs"></i>
+                                        <i class="fas fa-pencil-alt"></i>
                                     </a>
                                     <button type="button" 
-                                            class="btn btn-sm btn-outline-danger rounded-end-pill" 
+                                            class="btn-action btn-delete" 
                                             onclick="confirmDelete({{ $purchase->id }})"
                                             data-bs-toggle="tooltip" 
                                             title="Delete Purchase">
-                                        <i class="fas fa-trash-alt fa-xs"></i>
+                                        <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </div>
                                 <form id="delete-form-{{ $purchase->id }}" 
@@ -242,13 +323,13 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4">
-                                <div class="empty-state py-3">
-                                    <i class="fas fa-shopping-cart fa-3x text-muted mb-2"></i>
-                                    <h6 class="text-muted">No Purchases Found</h6>
-                                    <p class="small text-muted mb-2">Click the "New Purchase" button to create your first purchase.</p>
-                                    <a href="{{ route('purchase.create') }}" class="btn btn-sm btn-primary rounded-pill mt-1">
-                                        <i class="fas fa-plus-circle me-1"></i> Create New Purchase
+                            <td colspan="9" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No Purchases Found</h5>
+                                    <p class="text-muted small mb-3">Get started by creating your first purchase</p>
+                                    <a href="{{ route('purchase.create') }}" class="btn btn-primary rounded-pill">
+                                        <i class="fas fa-plus me-2"></i>Create New Purchase
                                     </a>
                                 </div>
                             </td>
@@ -260,15 +341,16 @@
         </div>
         
         @if($purchases->isNotEmpty())
-        <div class="card-footer bg-white border-0 py-2 rounded-bottom-3">
-            <div class="d-flex justify-content-between align-items-center flex-wrap">
-                <div>
+        <div class="card-footer bg-white border-0 py-3 px-4 rounded-bottom-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="pagination-info">
+                    <i class="fas fa-info-circle text-muted me-1"></i>
                     <small class="text-muted">
-                        Showing {{ $purchases->firstItem() }} to {{ $purchases->lastItem() }} 
-                        of {{ $purchases->total() }} entries
+                        Showing <strong>{{ $purchases->firstItem() }}</strong> to <strong>{{ $purchases->lastItem() }}</strong> 
+                        of <strong>{{ $purchases->total() }}</strong> entries
                     </small>
                 </div>
-                <div>
+                <div class="pagination-wrapper">
                     {{ $purchases->appends(request()->query())->links('pagination::bootstrap-5') }}
                 </div>
             </div>
@@ -279,13 +361,363 @@
 
 @endsection
 
+@push('styles')
+<style>
+    /* Stats Cards */
+    .stats-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .stats-icon {
+        width: 55px;
+        height: 55px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bg-primary-soft { background: linear-gradient(135deg, #eef2ff, #e0e7ff); }
+    .bg-success-soft { background: linear-gradient(135deg, #ecfdf5, #d1fae5); }
+    .bg-info-soft { background: linear-gradient(135deg, #ecfeff, #cffafe); }
+    .bg-warning-soft { background: linear-gradient(135deg, #fefce8, #fef3c7); }
+
+    /* Supplier Avatar */
+    .supplier-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 18px;
+    }
+
+    /* Invoice Number */
+    .invoice-number {
+        font-weight: 600;
+        color: #4f46e5;
+        background: #eef2ff;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        display: inline-block;
+    }
+
+    /* Purchase Date */
+    .purchase-date {
+        font-weight: 500;
+        color: #1f2937;
+        font-size: 13px;
+    }
+    
+    .time-ago {
+        font-size: 11px;
+    }
+
+    /* Badges */
+    .gst-badge {
+        background: #ecfeff;
+        color: #0891b2;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .discount-badge {
+        background: #fefce8;
+        color: #d97706;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .total-badge {
+        background: #ecfdf5;
+        color: #059669;
+        padding: 5px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 700;
+        display: inline-block;
+    }
+
+    /* Status Badges */
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .status-success {
+        background: #ecfdf5;
+        color: #059669;
+    }
+    
+    .status-danger {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+    
+    .status-warning {
+        background: #fffbeb;
+        color: #d97706;
+    }
+    
+    .status-secondary {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+        justify-content: center;
+    }
+    
+    .btn-action {
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        text-decoration: none;
+    }
+    
+    .btn-view {
+        color: #3b82f6;
+        background: #eff6ff;
+    }
+    
+    .btn-view:hover {
+        background: #dbeafe;
+        transform: translateY(-2px);
+        color: #2563eb;
+    }
+    
+    .btn-edit {
+        color: #f59e0b;
+        background: #fffbeb;
+    }
+    
+    .btn-edit:hover {
+        background: #fef3c7;
+        transform: translateY(-2px);
+        color: #d97706;
+    }
+    
+    .btn-delete {
+        color: #ef4444;
+        background: #fef2f2;
+    }
+    
+    .btn-delete:hover {
+        background: #fee2e2;
+        transform: translateY(-2px);
+        color: #dc2626;
+    }
+
+    /* Table Styling */
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table > :not(caption) > * > * {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+    }
+    
+    .table-hover tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8fafc;
+        transform: scale(1.01);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 50px 20px;
+    }
+
+    /* Pagination Styling */
+    .pagination-wrapper {
+        display: flex;
+        justify-content: center;
+    }
+    
+    .pagination {
+        margin-bottom: 0;
+        gap: 5px;
+    }
+    
+    .page-link {
+        border: none;
+        color: #475569;
+        border-radius: 10px !important;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        background: #f8fafc;
+    }
+    
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+    }
+    
+    .page-link:hover {
+        background-color: #e2e8f0;
+        color: #1e293b;
+        transform: translateY(-2px);
+    }
+    
+    .page-item.disabled .page-link {
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+
+    /* Form Controls */
+    .form-control, .form-select {
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        border-radius: 10px;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .bg-light {
+        background-color: #f8fafc !important;
+    }
+
+    /* Card Improvements */
+    .card {
+        transition: all 0.3s ease;
+        border: none !important;
+    }
+    
+    .card:hover {
+        box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .table > :not(caption) > * > * {
+            padding: 0.75rem 0.5rem;
+        }
+        
+        .supplier-avatar {
+            width: 36px;
+            height: 36px;
+            font-size: 14px;
+        }
+        
+        .btn-action {
+            width: 30px;
+            height: 30px;
+        }
+        
+        .status-badge, .gst-badge, .discount-badge, .total-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+        }
+        
+        .invoice-number {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+        
+        .stats-icon {
+            width: 45px;
+            height: 45px;
+        }
+        
+        .stats-icon i {
+            font-size: 1.5rem !important;
+        }
+        
+        h2 {
+            font-size: 1.3rem;
+        }
+    }
+
+    /* Custom Scrollbar */
+    .table-responsive::-webkit-scrollbar {
+        height: 6px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Typography */
+    .fw-semibold {
+        font-weight: 600;
+    }
+    
+    .text-gray-800 {
+        color: #1e293b;
+    }
+    
+    .rounded-4 {
+        border-radius: 1rem !important;
+    }
+    
+    .rounded-bottom-4 {
+        border-bottom-left-radius: 1rem !important;
+        border-bottom-right-radius: 1rem !important;
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function(tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
     });
     
     // Confirm delete function
@@ -298,7 +730,8 @@
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
             confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel'
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
                 document.getElementById('delete-form-' + id).submit();
@@ -306,8 +739,22 @@
         });
     }
     
-    // Auto-submit form when filter changes (optional)
-    document.querySelectorAll('#filterForm select, #filterForm input[type="date"]').forEach(element => {
+    // Auto-submit when per_page changes
+    document.querySelectorAll('select[name="per_page"]').forEach(element => {
+        element.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    });
+    
+    // Auto-submit when supplier changes
+    document.querySelectorAll('select[name="supplier_id"]').forEach(element => {
+        element.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    });
+    
+    // Auto-submit when date changes
+    document.querySelectorAll('input[type="date"]').forEach(element => {
         element.addEventListener('change', function() {
             document.getElementById('filterForm').submit();
         });
@@ -325,225 +772,4 @@
         });
     }
 </script>
-@endpush
-
-@push('styles')
-<style>
-    /* Compact & Modern Styles */
-    .avatar-sm {
-        width: 28px;
-        height: 28px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    /* Table compactness */
-    .table > :not(caption) > * > * {
-        padding: 0.5rem 0.5rem;
-        vertical-align: middle;
-    }
-    
-    /* Action buttons compact */
-    .btn-group-sm > .btn {
-        padding: 0.2rem 0.5rem;
-        font-size: 0.75rem;
-        border-radius: 0.2rem;
-    }
-    
-    .btn-group .btn {
-        margin: 0 1px;
-    }
-    
-    /* Empty state */
-    .empty-state {
-        text-align: center;
-    }
-    
-    /* Card hover effect */
-    .card {
-        transition: box-shadow 0.2s ease, transform 0.2s ease;
-    }
-    
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
-    }
-    
-    /* Badge styling */
-    .badge {
-        font-weight: 500;
-        font-size: 0.7rem;
-        padding: 0.3rem 0.6rem;
-    }
-    
-    /* Table hover effect */
-    .table-hover tbody tr:hover {
-        background-color: rgba(13, 110, 253, 0.04);
-        cursor: pointer;
-    }
-    
-    /* Pagination styling */
-    .pagination {
-        margin-bottom: 0;
-        gap: 2px;
-    }
-    
-    .page-link {
-        padding: 0.3rem 0.6rem;
-        font-size: 0.8rem;
-        border-radius: 0.375rem !important;
-        color: #4a5568;
-        border: 1px solid #e2e8f0;
-    }
-    
-    .page-item.active .page-link {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-        color: white;
-    }
-    
-    /* Form controls compact */
-    .form-control-sm, .form-select-sm {
-        font-size: 0.8rem;
-        padding: 0.25rem 0.5rem;
-    }
-    
-    .input-group-sm > .form-control {
-        font-size: 0.8rem;
-    }
-    
-    /* Button styling */
-    .btn-sm {
-        padding: 0.25rem 0.75rem;
-        font-size: 0.8rem;
-    }
-    
-    .btn-outline-info:hover, 
-    .btn-outline-warning:hover, 
-    .btn-outline-danger:hover {
-        color: white;
-    }
-    
-    .btn-outline-info:hover {
-        background-color: #0dcaf0;
-        border-color: #0dcaf0;
-    }
-    
-    .btn-outline-warning:hover {
-        background-color: #ffc107;
-        border-color: #ffc107;
-        color: #212529;
-    }
-    
-    .btn-outline-danger:hover {
-        background-color: #dc3545;
-        border-color: #dc3545;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .table th, .table td {
-            font-size: 0.75rem;
-            padding: 0.4rem 0.3rem;
-        }
-        
-        .badge {
-            font-size: 0.65rem;
-            padding: 0.2rem 0.4rem;
-        }
-        
-        .avatar-sm {
-            width: 24px;
-            height: 24px;
-        }
-        
-        h4 {
-            font-size: 1.2rem;
-        }
-        
-        .btn-group .btn {
-            padding: 0.15rem 0.4rem;
-        }
-    }
-    
-    /* Custom scrollbar for table */
-    .table-responsive::-webkit-scrollbar {
-        height: 6px;
-    }
-    
-    .table-responsive::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-    }
-    
-    .table-responsive::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 10px;
-    }
-    
-    .table-responsive::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-    }
-    
-    /* Soft gradient backgrounds for stats */
-    .bg-primary.bg-opacity-10 {
-        background: linear-gradient(135deg, rgba(13,110,253,0.1), rgba(13,110,253,0.05)) !important;
-    }
-    
-    .bg-success.bg-opacity-10 {
-        background: linear-gradient(135deg, rgba(25,135,84,0.1), rgba(25,135,84,0.05)) !important;
-    }
-    
-    .bg-info.bg-opacity-10 {
-        background: linear-gradient(135deg, rgba(13,202,240,0.1), rgba(13,202,240,0.05)) !important;
-    }
-    
-    .bg-warning.bg-opacity-10 {
-        background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,193,7,0.05)) !important;
-    }
-    
-    /* Status badge backgrounds */
-    .bg-success.bg-opacity-10 {
-        background: rgba(25, 135, 84, 0.1) !important;
-        color: #198754 !important;
-    }
-    
-    .bg-danger.bg-opacity-10 {
-        background: rgba(220, 53, 69, 0.1) !important;
-        color: #dc3545 !important;
-    }
-    
-    .bg-secondary.bg-opacity-10 {
-        background: rgba(108, 117, 125, 0.1) !important;
-        color: #6c757d !important;
-    }
-    
-    /* Typography improvements */
-    .fw-semibold {
-        font-weight: 600;
-    }
-    
-    .small {
-        font-size: 0.8rem;
-    }
-    
-    .text-muted {
-        color: #6c757d !important;
-    }
-    
-    /* Subtle box shadows */
-    .shadow-sm {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05) !important;
-    }
-    
-    /* Border radius */
-    .rounded-3 {
-        border-radius: 0.5rem !important;
-    }
-    
-    .rounded-pill {
-        border-radius: 50rem !important;
-    }
-</style>
 @endpush

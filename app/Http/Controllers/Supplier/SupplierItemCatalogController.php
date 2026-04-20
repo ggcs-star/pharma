@@ -182,4 +182,26 @@ public function show($id)
 
         return back()->with('success', 'Deleted successfully');
     }
+public function getSupplierCatalog(Request $request)
+{
+    $supplierId = $request->supplier_id;
+
+    $catalog = SupplierItemCatalog::with('item')
+        ->where('supplier_id', $supplierId)
+        ->where('is_active', 1)
+        ->get();
+
+    return response()->json($catalog);
+}
+public function getItemSuppliersWithCatalog(Request $request)
+{
+    $itemId = $request->item_id;
+
+    $data = \App\Models\SupplierItemCatalog::with(['supplier','item'])
+        ->where('item_id', $itemId)
+        ->get()
+        ->groupBy('supplier_id');
+
+    return response()->json($data);
+}
 }

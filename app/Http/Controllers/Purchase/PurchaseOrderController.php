@@ -22,8 +22,8 @@ class PurchaseOrderController extends Controller
     */
     public function index(Request $request)
     {
-        $query = PurchaseOrder::with(['supplier','retailer']);
-
+$query = PurchaseOrder::with(['supplier','retailer'])
+    ->withCount('items'); // 🔥 correct chaining
         if ($request->from_date && $request->to_date) {
             $query->whereBetween('order_date', [
                 $request->from_date,
@@ -62,10 +62,10 @@ class PurchaseOrderController extends Controller
     */
     public function getItemSuppliers(Request $request)
     {
-        return SupplierItemCatalog::with('supplier')
-            ->where('item_id', $request->item_id)
-            ->where('is_active', 1)
-            ->get();
+       return SupplierItemCatalog::with(['supplier','item'])
+    ->where('item_id', $request->item_id)
+    ->where('is_active', 1)
+    ->get();
     }
 
     /*
@@ -73,36 +73,134 @@ class PurchaseOrderController extends Controller
     | Store
     |--------------------------------------------------------------------------
     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'order_date' => 'required|date',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
-            'items.*.supplier_item_catalog_id' => 'required|exists:supplier_item_catalogs,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.rate' => 'required|numeric|min:0',
-        ]);
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'order_date' => 'required|date',
+    //         'items' => 'required|array|min:1',
+    //         'items.*.item_id' => 'required|exists:items,id',
+    //         'items.*.supplier_item_catalog_id' => 'required|exists:supplier_item_catalogs,id',
+    //         'items.*.quantity' => 'required|numeric|min:0.01',
+    //         'items.*.rate' => 'required|numeric|min:0',
+    //     ]);
 
-        DB::beginTransaction();
+    //     DB::beginTransaction();
 
-        try {
+    //     try {
 
-            $orderNumber = 'PO-' . date('Ymd') . '-' . rand(1000,9999);
+    //         $orderNumber = 'PO-' . date('Ymd') . '-' . rand(1000,9999);
 
-            // 🔥 FIRST ITEM CATALOG
-            $firstItem = collect($request->items)
-                ->firstWhere('supplier_item_catalog_id', '!=', null);
+    //         // 🔥 FIRST ITEM CATALOG
+    //         $firstItem = collect($request->items)
+    //             ->firstWhere('supplier_item_catalog_id', '!=', null);
 
-            $catalog = $firstItem
-                ? SupplierItemCatalog::find($firstItem['supplier_item_catalog_id'])
-                : null;
+    //         $catalog = $firstItem
+    //             ? SupplierItemCatalog::find($firstItem['supplier_item_catalog_id'])
+    //             : null;
 
-            // 🔥 CREATE ORDER
+    //         // 🔥 CREATE ORDER
+    //         $order = PurchaseOrder::create([
+    //             'supplier_id' => $catalog ? $catalog->supplier_id : null,
+    //             'retailer_id' => Auth::id(), // 🔥 LOGIN USER
+    //             'order_number' => $orderNumber,
+    //             'order_date' => $request->order_date,
+    //             'status' => 'pending',
+    //             'total_amount' => 0,
+    //             'total_gst' => 0,
+    //             'total_discount' => 0,
+    //             'net_amount' => 0
+    //         ]);
+
+    //         $totalAmount = 0;
+    //         $totalGST = 0;
+    //         $totalDiscount = 0;
+
+    //         foreach ($request->items as $item) {
+
+    //             if (!$item['item_id'] || !$item['quantity']) continue;
+
+    //             $catalog = SupplierItemCatalog::findOrFail($item['supplier_item_catalog_id']);
+
+    //             $qty = $item['quantity'];
+    //             $rate = $item['rate'];
+
+    //             $basic = $qty * $rate;
+
+    //             $discountPercent = $item['discount_percent'] ?? 0;
+    //             $discount = ($basic * $discountPercent) / 100;
+
+    //             $taxable = $basic - $discount;
+
+    //             $gstPercent = $item['gst_percent'] ?? $catalog->gst_percent;
+    //             $gst = ($taxable * $gstPercent) / 100;
+
+    //             $total = $taxable + $gst;
+
+    //             PurchaseOrderItem::create([
+    //                 'purchase_order_id' => $order->id,
+    //                 'item_id' => $item['item_id'],
+    //                 'supplier_item_catalog_id' => $catalog->id,
+    //                 'quantity' => $qty,
+    //                 'rate' => $rate,
+    //                 'gst_percent' => $gstPercent,
+    //                 'gst_amount' => $gst,
+    //                 'discount_percent' => $discountPercent,
+    //                 'discount_amount' => $discount,
+    //                 'taxable_amount' => $taxable,
+    //                 'total_amount' => $total
+    //             ]);
+
+    //             $totalAmount += $basic;
+    //             $totalGST += $gst;
+    //             $totalDiscount += $discount;
+    //         }
+
+    //         $order->update([
+    //             'total_amount' => $totalAmount,
+    //             'total_gst' => $totalGST,
+    //             'total_discount' => $totalDiscount,
+    //             'net_amount' => ($totalAmount - $totalDiscount + $totalGST)
+    //         ]);
+
+    //         DB::commit();
+
+    //         return redirect()->route('purchase-orders.index')
+    //             ->with('success', 'Purchase Order created successfully');
+
+    //     } catch (\Exception $e) {
+
+    //         DB::rollBack();
+    //         return back()->with('error', $e->getMessage());
+    //     }
+    // }
+public function store(Request $request)
+{
+    $request->validate([
+        'order_date' => 'required|date',
+        'items' => 'required|array|min:1',
+        'items.*.item_id' => 'required|exists:items,id',
+        'items.*.supplier_item_catalog_id' => 'required|exists:supplier_item_catalogs,id',
+        'items.*.quantity' => 'required|numeric|min:0.01',
+        'items.*.rate' => 'required|numeric|min:0',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+
+        // 🔥 GROUP BY SUPPLIER
+        $grouped = collect($request->items)->groupBy(function ($item) {
+            $catalog = SupplierItemCatalog::find($item['supplier_item_catalog_id']);
+            return $catalog->supplier_id;
+        });
+
+        foreach ($grouped as $supplier_id => $items) {
+
+            // 🔥 CREATE PO PER SUPPLIER
             $order = PurchaseOrder::create([
-                'supplier_id' => $catalog ? $catalog->supplier_id : null,
-                'retailer_id' => Auth::id(), // 🔥 LOGIN USER
-                'order_number' => $orderNumber,
+                'supplier_id' => $supplier_id,
+                'retailer_id' => Auth::id(),
+                'order_number' => 'PO-' . date('Ymd') . '-' . rand(1000,9999),
                 'order_date' => $request->order_date,
                 'status' => 'pending',
                 'total_amount' => 0,
@@ -115,7 +213,7 @@ class PurchaseOrderController extends Controller
             $totalGST = 0;
             $totalDiscount = 0;
 
-            foreach ($request->items as $item) {
+            foreach ($items as $item) {
 
                 if (!$item['item_id'] || !$item['quantity']) continue;
 
@@ -155,25 +253,26 @@ class PurchaseOrderController extends Controller
                 $totalDiscount += $discount;
             }
 
+            // 🔥 UPDATE TOTAL
             $order->update([
                 'total_amount' => $totalAmount,
                 'total_gst' => $totalGST,
                 'total_discount' => $totalDiscount,
                 'net_amount' => ($totalAmount - $totalDiscount + $totalGST)
             ]);
-
-            DB::commit();
-
-            return redirect()->route('purchase-orders.index')
-                ->with('success', 'Purchase Order created successfully');
-
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-            return back()->with('error', $e->getMessage());
         }
-    }
 
+        DB::commit();
+
+        return redirect()->route('purchase-orders.index')
+            ->with('success', 'Purchase Orders created successfully');
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+        return back()->with('error', $e->getMessage());
+    }
+}
     /*
     |--------------------------------------------------------------------------
     | Convert PO → Purchase
