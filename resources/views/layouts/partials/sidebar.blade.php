@@ -179,6 +179,8 @@
         <i class="fa fa-user-md me-2"></i> Doctors
     </a>
 
+    
+
     <!-- Purchase -->
     <div class="menu-title">
         <i class="fa fa-shopping-cart me-1"></i> Purchase
@@ -196,6 +198,17 @@
     <a href="{{ route('purchase-return.index') }}" class="{{ request()->routeIs('purchase-return.*') ? 'active' : '' }}">
         <i class="fa fa-undo me-2"></i> Purchase Return
     </a>
+
+    <!-- Purchase -->
+    <!-- Inventory -->
+<div class="menu-title">
+    <i class="fa fa-boxes me-1"></i> Inventory
+</div>
+
+<a href="{{ route('stock.index') }}" class="{{ request()->routeIs('stock.index') ? 'active' : '' }}">
+    <i class="fa fa-box me-2"></i> Stock
+</a>
+   
 
     <!-- Sales -->
     <div class="menu-title">

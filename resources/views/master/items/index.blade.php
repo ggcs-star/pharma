@@ -100,8 +100,8 @@
                             <th class="text-start">Item</th>
                             <th>Manufacturer</th>
                             <th>Category</th>
-                            <th>GST</th>
-                            <th>Rack</th>
+                            <th>Pack Type</th>
+                            <th>prescription</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -168,17 +168,28 @@
                                 </span>
                             </td>
 
-                            <!-- GST -->
-                            <td class="text-center text-success fw-bold">
-                                {{ number_format($item->gst_percent, 2) }}%
+                            <!-- PACK TYPE -->
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark px-3 py-2 rounded-pill shadow-sm">
+                                    {{ $item->packType->name ?? '-' }}
+                                </span>
                             </td>
 
                             <!-- RACK -->
-                            <td class="text-center">
-                                <span class="badge bg-secondary-subtle text-dark px-3 py-2 rounded-pill">
-                                    {{ $item->rack ?? '—' }}
-                                </span>
-                            </td>
+<td class="text-center">
+    <div class="d-flex flex-column align-items-center">
+        <div class="form-check form-switch m-0">
+            <input class="form-check-input" 
+                   type="checkbox" 
+                   disabled
+                   style="transform: scale(0.7); cursor: default;"
+                   {{ $item->need_prescription ? 'checked' : '' }}>
+        </div>
+        <small class="text-muted">
+            {{ $item->need_prescription ? 'Required' : 'Not Required' }}
+        </small>
+    </div>
+</td>
 
                             <!-- STATUS -->
                             <td class="text-center">
