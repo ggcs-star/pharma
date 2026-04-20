@@ -40,6 +40,7 @@ Route::get('/api/supplier-items/{id}', function ($id) {
         ->where('supplier_id', $id)
         ->get();
 });
+Route::get('/item/suppliers', [PurchaseOrderController::class, 'getItemSuppliers']);
 // Route::get('/admin/prescription/{id}', [AdminController::class, 'viewPrescription'])
 //     ->name('admin.prescription.view');
 Route::get('/purchase/search-item', [PurchaseController::class, 'searchItems']);     Route::get('/recent-items', [PurchaseController::class, 'recentItems'])->name('items.recent');

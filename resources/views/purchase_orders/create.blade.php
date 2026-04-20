@@ -381,16 +381,34 @@
     'use strict';
     
     let rowCounter = 0;
-    const DEFAULT_PLACEHOLDER_IMG = 'https://placehold.co/600x400?text=Medicine+Image';
     
-    function getMedicineImageUrl(imagePath) {
-        if (!imagePath || imagePath.trim() === '') {
-            return DEFAULT_PLACEHOLDER_IMG;
+    // Helper function to get image URL with proper S3 handling
+    function getImageUrl(item) {
+        if (!item) return 'https://placehold.co/600x400?text=Medicine+Image';
+        
+        // Check if image_url exists and is a valid URL
+        if (item.image_url) {
+            // If it's a full URL (starts with http or https)
+            if (item.image_url.startsWith('http://') || item.image_url.startsWith('https://')) {
+                return item.image_url;
+            }
+            // If it's a relative path, you might need to prepend your S3 base URL
+            // Adjust this according to your S3 configuration
+            if (item.image_url.startsWith('/storage/') || item.image_url.startsWith('storage/')) {
+                return item.image_url;
+            }
+            return item.image_url;
         }
-        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-            return imagePath;
+        
+        // Check for main_image as fallback
+        if (item.main_image) {
+            if (item.main_image.startsWith('http://') || item.main_image.startsWith('https://')) {
+                return item.main_image;
+            }
+            return item.main_image;
         }
-        return '/storage/' + imagePath;
+        
+        return 'https://placehold.co/600x400?text=Medicine+Image';
     }
     
     function findBestPriceSupplier(suppliers) {
@@ -434,14 +452,15 @@
     
         catalog.forEach(data => {
             let item = data.item;
-            const imgUrl = getMedicineImageUrl(item?.main_image || item?.image || '');
-    
+            const imgUrl = getImageUrl(item);
+            
             html += `
                 <div class="col-md-3 col-sm-6">
                     <div class="catalog-item" data-item='${JSON.stringify(data)}'>
-                        <img src="${imgUrl}" class="img-fluid rounded mb-2"
-                             style="height:80px;width:100%;object-fit:cover;">
-                        <div class="small fw-semibold">${item?.name || ''}</div>
+                        <img src="${imgUrl}" class="img-fluid rounded mb-2" 
+                             style="height:80px;width:100%;object-fit:cover;"
+                             onerror="this.src='https://placehold.co/600x400?text=Medicine+Image'">
+                        <div class="small fw-semibold">${escapeHtml(item?.name || '')}</div>
                         <div class="text-success fw-bold">₹${data.purchase_price || 0}</div>
                         <div class="small text-muted">GST: ${data.gst_percent || 0}%</div>
                     </div>
@@ -501,7 +520,7 @@
         let html = '';
         suppliers.forEach(supplier => {
             const isBestPrice = (bestSupplierId === supplier.id);
-            const imageUrl = getMedicineImageUrl(supplier.item?.main_image || supplier.item?.image || '');
+            const imageUrl = getImageUrl(supplier.item);
             
             html += `
                 <div class="supplier-card ${isBestPrice ? 'best-price-card' : ''}"
@@ -510,13 +529,13 @@
                      data-rate="${supplier.purchase_price || supplier.retailer_price || 0}"
                      data-mrp="${supplier.base_price || supplier.mrp || 0}"
                      data-gst="${supplier.gst_percent || 0}"
-                     data-supplier-id="${supplier.supplier_id || ''}"
+                     data-supplier-id="${supplier.supplier_id ?? supplier.id}"
                      data-supplier-data='${JSON.stringify(supplier)}'>
                     <div class="d-flex gap-3">
                         <img src="${imageUrl}" 
                              class="medicine-img-card" 
                              alt="${escapeHtml(supplier.item?.name)}"
-                             onerror="this.src='${DEFAULT_PLACEHOLDER_IMG}'">
+                             onerror="this.src='https://placehold.co/600x400?text=Medicine+Image'">
                         <div class="flex-grow-1">
                             <div class="fw-bold mb-1">${escapeHtml(supplier.item?.name)}</div>
                             <div class="supplier-name-text mb-2">
@@ -597,7 +616,7 @@
     function createNewRow(rowIdx) {
         let optionsHtml = '<option value="">Select Medicine</option>';
         @foreach($items as $item)
-            optionsHtml += `<option value="{{ $item->id }}">{{ $item->name }}</option>`;
+            optionsHtml += `<option value="{{ $item->id }}" data-image="{{ $item->image_url ?? $item->main_image ?? '' }}">{{ $item->name }}</option>`;
         @endforeach
         
         return `
@@ -641,7 +660,22 @@
                 searchField: ['text'],
                 placeholder: '🔍 Search medicine...',
                 allowEmptyOption: true,
-                create: false
+                create: false,
+                render: {
+                    option: function(data, escape) {
+                        const imageUrl = data.image || '';
+                        const imageHtml = imageUrl ? 
+                            `<img src="${imageUrl}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; margin-right: 8px;">` : 
+                            '';
+                        return `<div class="d-flex align-items-center">
+                                    ${imageHtml}
+                                    <span>${escape(data.text)}</span>
+                                </div>`;
+                    },
+                    item: function(data, escape) {
+                        return `<div>${escape(data.text)}</div>`;
+                    }
+                }
             });
             
             tsInstance.on('change', async function(value) {

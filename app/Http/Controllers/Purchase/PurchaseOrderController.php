@@ -12,6 +12,7 @@ use App\Models\Purchase\PurchaseOrderItem;
 use App\Models\Supplier;
 use App\Models\Item;
 use App\Models\SupplierItemCatalog;
+use Illuminate\Support\Str;
 
 class PurchaseOrderController extends Controller
 {
@@ -61,12 +62,92 @@ $query = PurchaseOrder::with(['supplier','retailer'])
     |--------------------------------------------------------------------------
     */
     public function getItemSuppliers(Request $request)
-    {
-       return SupplierItemCatalog::with(['supplier','item'])
-    ->where('item_id', $request->item_id)
-    ->where('is_active', 1)
-    ->get();
-    }
+{
+    $data = SupplierItemCatalog::with(['supplier','item'])
+        ->where('item_id', $request->item_id)
+        ->where('is_active', 1)
+        ->get();
+
+return response()->json(
+    $data->map(function ($catalog) {
+
+        $catalogArr = $catalog->toArray();
+
+        $item = $catalogArr['item'] ?? null;
+
+        if (!$item) {
+            $catalogArr['item'] = [
+                'image_url' => asset('images/no-image.png')
+            ];
+            return $catalogArr;
+        }
+
+$image = $item['main_image'] 
+    ?? $item['image'] 
+    ?? $item['image_url'] 
+    ?? null;
+        if (!$image) {
+            $imageUrl = asset('images/no-image.png');
+        } elseif (Str::startsWith($image, ['http://', 'https://'])) {
+            $imageUrl = $image;
+        } elseif (Str::startsWith($image, 'medicinedata.in')) {
+            $imageUrl = 'https://' . $image;
+        } elseif (Str::startsWith($image, 'storage/')) {
+            $imageUrl = asset($image);
+        } else {
+            $imageUrl = asset('storage/' . $image);
+        }
+
+        $catalogArr['item']['image_url'] = $imageUrl;
+
+        return $catalogArr;
+
+    })->values()->all() // 🔥🔥 MOST IMPORTANT FIX
+);
+}
+public function getSupplierItems($supplierId)
+{
+    $data = SupplierItemCatalog::with(['item'])
+        ->where('supplier_id', $supplierId)
+        ->where('is_active', 1) // ✅ ADD THIS
+        ->whereNotNull('item_id') // ✅ ADD THIS
+        ->get();
+
+    return response()->json(
+        $data->map(function ($catalog) {
+
+            $catalogArr = $catalog->toArray();
+
+            $item = $catalogArr['item'] ?? null;
+
+            if (!$item) {
+                $catalogArr['item'] = [
+                    'image_url' => asset('images/no-image.png')
+                ];
+                return $catalogArr;
+            }
+
+            $image = $item['main_image'] ?? $item['image'] ?? null;
+
+            if (!$image) {
+                $imageUrl = asset('images/no-image.png');
+            } elseif (Str::startsWith($image, ['http://', 'https://'])) {
+                $imageUrl = $image;
+            } elseif (Str::startsWith($image, 'medicinedata.in')) {
+                $imageUrl = 'https://' . $image;
+            } elseif (Str::startsWith($image, 'storage/')) {
+                $imageUrl = asset($image);
+            } else {
+                $imageUrl = asset('storage/' . $image);
+            }
+
+            $catalogArr['item']['image_url'] = $imageUrl;
+
+            return $catalogArr;
+
+        })->values()->all() // 🔥 MUST
+    );
+}
 
     /*
     |--------------------------------------------------------------------------
