@@ -34,6 +34,7 @@ use App\Http\Controllers\Supplier\SupplierOrderController;
 use App\Http\Controllers\Supplier\SupplierItemController;
 use App\Http\Controllers\Supplier\SupplierDashboardController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\StockController;
 Route::get('/api/supplier-items/{id}', function ($id) {
     return \App\Models\SupplierItemCatalog::with('item')
         ->where('supplier_id', $id)
@@ -367,8 +368,8 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-
-
+Route::get('/stock', [StockController::class, 'index'])->name('stock.index');
+Route::get('/stock/{item}', [StockController::class, 'show'])->name('stock.show');
 
 });
 Route::get('/supplier/login', [SupplierAuthController::class, 'showLogin'])->name('supplier.login');
