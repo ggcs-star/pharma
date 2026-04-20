@@ -16,11 +16,12 @@
         </nav>
     </div>
 
-    {{-- Search Card --}}
+    {{-- Search and Filter Card --}}
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('stock.index') }}" class="row g-3 align-items-center">
-                <div class="col-md-8 col-lg-6">
+            <form method="GET" action="{{ route('stock.index') }}" class="row g-3">
+                {{-- Search Input --}}
+                <div class="col-md-6 col-lg-4">
                     <div class="input-group">
                         <span class="input-group-text bg-white">
                             <i class="bi bi-search"></i>
@@ -32,18 +33,49 @@
                                value="{{ request('search') }}">
                     </div>
                 </div>
-                <div class="col-md-4 col-lg-3">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search me-1"></i>Search
-                    </button>
-                </div>
-                @if(request('search'))
-                    <div class="col-md-12 col-lg-3">
-                        <a href="{{ route('stock.index') }}" class="btn btn-outline-secondary w-100">
-                            <i class="bi bi-x-circle me-1"></i>Clear Search
-                        </a>
+                
+                {{-- From Date --}}
+                <div class="col-md-3 col-lg-2">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="bi bi-calendar"></i>
+                        </span>
+                        <input type="date" 
+                               name="from_date" 
+                               class="form-control" 
+                               value="{{ request('from_date') }}"
+                               placeholder="From Date">
                     </div>
-                @endif
+                </div>
+                
+                {{-- To Date --}}
+                <div class="col-md-3 col-lg-2">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="bi bi-calendar"></i>
+                        </span>
+                        <input type="date" 
+                               name="to_date" 
+                               class="form-control" 
+                               value="{{ request('to_date') }}"
+                               placeholder="To Date">
+                    </div>
+                </div>
+                
+                {{-- Action Buttons --}}
+                <div class="col-md-12 col-lg-4">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel me-1"></i>Apply Filters
+                        </button>
+                        
+                        @if(request('search') || request('from_date') || request('to_date'))
+                            <a href="{{ route('stock.index') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Clear All
+                            </a>
+                        @endif
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -67,12 +99,12 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4" style="width: 5%"></th>
-                            <th style="width: 25%">Item Name</th>
+                            <th style="width: 25%">Item </th>
                             <th class="text-center" style="width: 15%">Total Purchased</th>
                             <th class="text-center" style="width: 15%">Total Sold</th>
                             <th class="text-center" style="width: 15%">Available Stock</th>
-                            <th class="pe-4" style="width: 25%">Batches</th>
-                            <th class="pe-4" style="width: 25%">Actions</th>
+                            <th class="pe-4" style="width: 15%">Batches</th>
+                            <th class="pe-4" style="width: 15%">Actions</th>
 
                         </tr>
                     </thead>
@@ -96,14 +128,30 @@
                                 </td>
                                 
                                 {{-- Item Name with Link --}}
-                                <td class="fw-medium">
-                                    <a href="{{ route('stock.show', $stock->id) }}" 
-                                       class="text-decoration-none fw-medium">
-                                        {{ $stock->name }}
-                                        <i class="bi bi-box-arrow-up-right ms-1 small text-muted"></i>
-                                    </a>
-                                </td>
-                                
+      <td class="fw-medium">
+    <a href="{{ route('stock.show', $stock->id) }}" class="text-decoration-none fw-medium d-flex align-items-center gap-2">
+
+        <!-- Image -->
+        @if($stock->main_image)
+            <img src="{{ $stock->main_image }}" 
+                 alt="{{ $stock->name }}"
+                 class="rounded"
+                 style="width:32px; height:32px; object-fit:cover;">
+        @else
+            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                 style="width:32px; height:32px;">
+                <i class="bi bi-image text-muted small"></i>
+            </div>
+        @endif
+
+        <!-- Name -->
+        <span>
+            {{ $stock->name }}
+            <i class="bi bi-box-arrow-up-right ms-1 small text-muted"></i>
+        </span>
+
+    </a>
+</td>                          
                                 {{-- Total Purchased --}}
                                 <td class="text-center">
                                     <span class="badge bg-info bg-opacity-10 text-info px-3 py-2">
@@ -154,7 +202,7 @@
                             {{-- Batches Detail Row (Hidden by default) --}}
                             @if($hasBatches)
                                 <tr class="batch-detail-row" id="batches-{{ $stock->id }}" style="display: none;">
-                                    <td colspan="6" class="p-0">
+                                    <td colspan="7" class="p-0">
                                         <div class="batch-container p-3">
                                             <div class="table-responsive">
                                                 <table class="table table-sm table-bordered mb-0 batch-table">
@@ -215,11 +263,11 @@
                             @endif
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center py-5">
+                                <td colspan="7" class="text-center py-5">
                                     <div class="text-muted">
                                         <i class="bi bi-inbox display-4 d-block mb-3"></i>
                                         <h5>No stock items found</h5>
-                                        <p class="mb-0">Try adjusting your search criteria</p>
+                                        <p class="mb-0">Try adjusting your search or filter criteria</p>
                                     </div>
                                 </td>
                             </tr>
@@ -344,18 +392,18 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .toggle-batches {
-    width: 32px;
-    height: 32px;
+    width: 20px;
+    height: 20px;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 5px;
     transition: all 0.3s ease;
 }
 
 .toggle-batches i {
-    font-size: 1.2rem;
+    font-size: 0.9rem;
     transition: transform 0.3s ease;
 }
 

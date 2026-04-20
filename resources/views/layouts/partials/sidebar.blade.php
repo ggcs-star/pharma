@@ -13,7 +13,7 @@
         overflow-x: hidden;
         transition: all 0.3s ease;
         z-index: 1030;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         scrollbar-width: thin;
     }
 
@@ -40,7 +40,7 @@
         color: transparent;
         margin: 0;
         padding: 18px 20px;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         letter-spacing: 0.5px;
     }
 
@@ -79,7 +79,7 @@
     }
 
     .sidebar a:hover {
-        background: rgba(255,255,255,0.06);
+        background: rgba(255, 255, 255, 0.06);
         color: #ffffff;
     }
 
@@ -108,7 +108,7 @@
         width: 40px;
         height: 40px;
         border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         cursor: pointer;
         transition: all 0.2s;
         display: none;
@@ -125,17 +125,17 @@
             transform: translateX(-100%);
             width: 260px;
         }
-        
+
         .sidebar.show {
             transform: translateX(0);
         }
-        
+
         .sidebar-toggle {
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        
+
         .main {
             margin-left: 0 !important;
         }
@@ -148,12 +148,11 @@
 </button>
 
 <div class="sidebar" id="sidebar">
-<h4 class="text-center py-3 border-bottom d-flex align-items-center justify-content-center">
-    <img src="{{ asset('storage/images/pharma.png') }}" 
-         alt="Pharma ERP Logo" 
-         style="height:35px; margin-right:10px;">
-    
-</h4>
+    <h4 class="text-center py-3 border-bottom d-flex align-items-center justify-content-center">
+        <img src="{{ asset('storage/images/pharma.png') }}" alt="Pharma ERP Logo"
+            style="height:35px; margin-right:10px;">
+
+    </h4>
     <!-- Dashboard -->
     <div class="menu-title">
         <i class="fa fa-chart-line me-1"></i> Dashboard
@@ -179,7 +178,7 @@
         <i class="fa fa-user-md me-2"></i> Doctors
     </a>
 
-    
+
 
     <!-- Purchase -->
     <div class="menu-title">
@@ -188,27 +187,22 @@
     <a href="{{ route('purchase.create') }}" class="{{ request()->routeIs('purchase.create') ? 'active' : '' }}">
         <i class="fa fa-plus me-2"></i> Purchase Entry
     </a>
-     </a>
+    </a>
     <a href="{{ route('purchase.index') }}" class="{{ request()->routeIs('purchase.index') ? 'active' : '' }}">
         <i class="fa fa-list me-2"></i> Purchase List
     </a>
-    <a href="{{ route('purchase-orders.index') }}" class="{{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
+    <a href="{{ route('purchase-orders.index') }}"
+        class="{{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
         <i class="fa fa-file-invoice me-2"></i> Purchase Order
-</a>
-    <a href="{{ route('purchase-return.index') }}" class="{{ request()->routeIs('purchase-return.*') ? 'active' : '' }}">
+    </a>
+    <a href="{{ route('purchase-return.index') }}"
+        class="{{ request()->routeIs('purchase-return.*') ? 'active' : '' }}">
         <i class="fa fa-undo me-2"></i> Purchase Return
     </a>
 
     <!-- Purchase -->
-    <!-- Inventory -->
-<div class="menu-title">
-    <i class="fa fa-boxes me-1"></i> Inventory
-</div>
 
-<a href="{{ route('stock.index') }}" class="{{ request()->routeIs('stock.index') ? 'active' : '' }}">
-    <i class="fa fa-box me-2"></i> Stock
-</a>
-   
+
 
     <!-- Sales -->
     <div class="menu-title">
@@ -221,38 +215,44 @@
         <i class="fa fa-list me-2"></i> Sales List
     </a>
 
-  <a href="{{ route('sales.return.create') }}" 
-   class="{{ request()->routeIs('sales.return.create') ? 'active' : '' }}">
-    <i class="fa fa-undo me-2"></i> Sales Return
-</a>
+    <a href="{{ route('sales.return.create') }}"
+        class="{{ request()->routeIs('sales.return.create') ? 'active' : '' }}">
+        <i class="fa fa-undo me-2"></i> Sales Return
+    </a>
     <a href="{{ route('sales_return.index') }}" class="{{ request()->routeIs('sales_return.index') ? 'active' : '' }}">
         <i class="fa fa-history me-2"></i> Sales Return History
     </a>
     <div class="menu-title">
-    <i class="fa fa-shopping-bag me-1"></i> Orders
-</div>
+        <i class="fa fa-shopping-bag me-1"></i> Orders
+    </div>
 
-<a href="{{ route('admin.orders.index') }}" 
-   class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
-    <i class="fa fa-box me-2"></i> Online Orders
-</a>
-       <!-- Ledger -->
-<div class="menu-title">
-    <i class="fa fa-book me-1"></i> Accounts
-</div>
+    <a href="{{ route('admin.orders.index') }}" class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
+        <i class="fa fa-box me-2"></i> Online Orders
+    </a>
+    <!-- Inventory -->
+    <div class="menu-title">
+        <i class="fa fa-boxes me-1"></i> Inventory
+    </div>
 
-<a href="{{ route('customer.ledger') }}"
-   class="{{ request()->routeIs('customer.ledger') ? 'active' : '' }}">
-    <i class="fa fa-user me-2"></i> Customer Ledger
-</a>
-<!-- Logout -->
-<div class="menu-title">
-    <i class="fa fa-sign-out-alt me-1"></i> Session
-</div>
+    <a href="{{ route('stock.index') }}" class="{{ request()->routeIs('stock.index') ? 'active' : '' }}">
+        <i class="fa fa-box me-2"></i> Stock
+    </a>
+    <!-- Ledger -->
+    <div class="menu-title">
+        <i class="fa fa-book me-1"></i> Accounts
+    </div>
 
-<form method="POST" action="{{ route('logout') }}">
-    @csrf
-    <button type="submit" style="
+    <a href="{{ route('customer.ledger') }}" class="{{ request()->routeIs('customer.ledger') ? 'active' : '' }}">
+        <i class="fa fa-user me-2"></i> Customer Ledger
+    </a>
+    <!-- Logout -->
+    <div class="menu-title">
+        <i class="fa fa-sign-out-alt me-1"></i> Session
+    </div>
+
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit" style="
         width:100%;
         background:none;
         border:none;
@@ -266,44 +266,44 @@
         border-radius:10px;
         cursor:pointer;
     ">
-        <i class="fa fa-sign-out-alt me-2"></i> Logout
-    </button>
-</form>
+            <i class="fa fa-sign-out-alt me-2"></i> Logout
+        </button>
+    </form>
 </div>
 
- 
+
 <script>
     // Mobile sidebar toggle functionality
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const toggleBtn = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
-        
+
         if (toggleBtn && sidebar) {
-            toggleBtn.addEventListener('click', function(e) {
+            toggleBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 sidebar.classList.toggle('show');
             });
-            
+
             // Close sidebar when clicking outside on mobile
-            document.addEventListener('click', function(event) {
+            document.addEventListener('click', function (event) {
                 if (window.innerWidth <= 768) {
                     if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
                         sidebar.classList.remove('show');
                     }
                 }
             });
-            
+
             // Close sidebar on window resize if screen becomes larger
-            window.addEventListener('resize', function() {
+            window.addEventListener('resize', function () {
                 if (window.innerWidth > 768) {
                     sidebar.classList.remove('show');
                 }
             });
         }
-        
+
         // Active link highlight based on current URL
         const currentUrl = window.location.pathname;
-        document.querySelectorAll('.sidebar a').forEach(function(link) {
+        document.querySelectorAll('.sidebar a').forEach(function (link) {
             const href = link.getAttribute('href');
             if (href && href !== '#') {
                 if (currentUrl === href || (currentUrl.includes(href) && href !== '/' && currentUrl !== '/')) {
