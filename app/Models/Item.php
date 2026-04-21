@@ -197,7 +197,10 @@ class Item extends Model
     //         ->orderBy('expiry_date');
     // }
 
-
+public function packings()
+{
+    return $this->hasMany(ItemPacking::class);
+}
 
     public function catalogs()
 {

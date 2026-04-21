@@ -409,11 +409,23 @@
                                 <textarea name="notes" class="form-control" rows="3" 
                                           placeholder="Additional notes...">{{ old('notes', $item->notes) }}</textarea>
                             </div>
+                            <div class="col-md-12 mt-3">
+    <label class="form-label fw-semibold">Available Packings</label>
+
+    <div class="d-flex flex-wrap gap-2">
+        @foreach($item->packings as $packing)
+            <span class="badge bg-info text-dark px-3 py-2">
+                {{ ucfirst($packing->packaging_detail) }}
+            </span>
+        @endforeach
+    </div>
+</div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            
             <!-- RIGHT COLUMN -->
             <div class="col-lg-4">
                 

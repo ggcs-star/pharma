@@ -90,6 +90,7 @@
                                     <th style="width: 5%;">Qty <span class="text-danger">*</span></th>
                                     <th style="width: 5%;">Free</th>
                                     <th style="width: 8%;">Batch No <span class="text-danger">*</span></th>
+                                    <th style="width: 7%;">Rack</th>
                                     <th style="width: 7%;">Expiry <span class="text-danger">*</span></th>
                                     <th style="width: 6%;">MRP (₹)</th>
                                     <th style="width: 6%;">PTR (₹)</th>
@@ -195,7 +196,6 @@
                         <option value="">-- Select --</option>
                     </select>
                     <input type="hidden" name="items[${index}][barcode]" class="barcode">
-                    <input type="hidden" name="items[${index}][rack]" class="rack">
                     <input type="hidden" name="items[${index}][hsn_code]" class="hsnCode">
                 </td>
                 <td>
@@ -210,6 +210,12 @@
                     <input type="text" name="items[${index}][batch_number]" class="form-control form-control-sm batchNumber" 
                            placeholder="Batch No." required>
                 </td>
+                <td>
+    <input type="text" 
+           name="items[${index}][rack]" 
+           class="form-control form-control-sm rack" 
+           placeholder="Rack (A1, B2...)">
+</td>
                 <td>
                     <input type="date" name="items[${index}][expiry_date]" class="form-control form-control-sm expiryDate" required>
                 </td>
