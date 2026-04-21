@@ -428,13 +428,11 @@
         const bestSupplier = findBestPriceSupplier(suppliers);
         const bestId = bestSupplier ? bestSupplier.id : null;
         let html = '';
-        suppliers.forEach(sup => {
-            const isBest = bestId === sup.id;
+suppliers.forEach((sup, index) => {            const isBest = bestId === sup.id;
             const imgUrl = getImageUrl(sup);
             html += `
                 <div class="supplier-select-card ${isBest ? 'best-price' : ''}" 
-                    data-supplier='${encodeURIComponent(JSON.stringify(sup))}'>
-                    <div class="d-flex gap-3">
+  data-index="${index}">                  <div class="d-flex gap-3">
                         <img src="${imgUrl}" class="supplier-img" alt="medicine" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
                         <div class="flex-grow-1">
                             <div class="fw-bold mb-1">${escapeHtml(sup.item?.name || selectedMedicineName || 'Medicine')}</div>
@@ -476,11 +474,9 @@
             
             document.querySelectorAll('.supplier-select-card').forEach(card => {
                 card.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const supplierRaw = card.dataset.supplier;
-                    if (!supplierRaw) return;
-const supplier = JSON.parse(decodeURIComponent(supplierRaw));                    await selectSupplier(supplier, card);
-                });
+const index = card.dataset.index;
+const supplier = suppliers[index];
+await selectSupplier(supplier, card);                            });
             });
         } catch (err) {
             console.error(err);
@@ -532,16 +528,14 @@ const supplier = JSON.parse(decodeURIComponent(supplierRaw));                   
             return;
         }
         let html = '';
-        supplierCatalogItems.forEach(item => {
-            const imgUrl = getImageUrl(item);
+supplierCatalogItems.forEach((item, index) => {            const imgUrl = getImageUrl(item);
             html += `
                 <div class="col-md-3 col-sm-6">
-                    <div class="catalog-item-card" data-catalog-item='${encodeURIComponent(JSON.stringify(item))}'>
-                        <img src="${imgUrl}" class="img-fluid rounded-3 mb-2" style="height:85px;width:100%;object-fit:cover;" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
+                    <div class="catalog-item-card" data-index="${index}">                        <img src="${imgUrl}" class="img-fluid rounded-3 mb-2" style="height:85px;width:100%;object-fit:cover;" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
                         <div class="small fw-semibold">${escapeHtml(item.item?.name || 'Product')}</div>
                         <div class="text-success fw-bold mt-1">₹${item.purchase_price || 0}</div>
 <div class="d-flex justify-content-between mt-1">
-    <span class="small ${item.stock_qty < 10 ? 'text-danger fw-bold' : 'text-muted'}">
+    <span class="small ${(item.current_stock ?? item.real_stock ?? 0) < 10 ? 'text-danger fw-bold' : 'text-muted'}">
 📦 ${item.current_stock ?? item.real_stock ?? 0}    </span>
     <span class="small text-danger">
         ⏳ ${formatExpiry(item.expiry_date)}
@@ -549,10 +543,13 @@ const supplier = JSON.parse(decodeURIComponent(supplierRaw));                   
 </div>                        <div class="small text-secondary">MRP: ₹${item.base_price || item.mrp || 0}</div>
 <button type="button" 
     class="btn btn-sm btn-success w-100 mt-2 add-item-btn"
-    ${(item.current_stock ?? 0) <= 0 || new Date(item.expiry_date) < new Date() ? 'disabled' : ''}>
-${(item.current_stock ?? 0) <= 0 
-    ? 'Out of Stock' 
-    : (new Date(item.expiry_date) < new Date() ? 'Expired' : '+ Add to Order')}</button>                    </div>
+    ${(new Date(item.expiry_date) < new Date() || (item.current_stock ?? item.real_stock ?? 0) <= 0) ? 'disabled' : ''}>
+    ${(item.current_stock ?? item.real_stock ?? 0) <= 0 
+        ? 'Out of Stock' 
+        : (new Date(item.expiry_date) < new Date() 
+            ? 'Expired' 
+            : '+ Add to Order')}
+</button>                   </div>
                 </div>
             `;
         });
@@ -560,8 +557,8 @@ ${(item.current_stock ?? 0) <= 0
         
         grid.querySelectorAll('.catalog-item-card').forEach(card => {
             const addBtn = card.querySelector('.add-item-btn');
-const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
-            const addItem = () => addItemToOrder(itemData);
+  const index = card.dataset.index;
+const itemData = supplierCatalogItems[index];          const addItem = () => addItemToOrder(itemData);
             addBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 addItem();
@@ -573,18 +570,21 @@ const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
     }
     
     function addItemToOrder(catalogItem) {
-        
-        const newItem = {
-            rowId: rowIdCounter++,
-            catalog_id: catalogItem.id,
-            item_id: catalogItem.item_id,
-            name: catalogItem.item?.name || 'Medicine',
-            rate: catalogItem.purchase_price || 0,
-            mrp: catalogItem.base_price || catalogItem.mrp || 0,
-            gst: catalogItem.gst_percent || 0,
-quantity: 1,
-stock: catalogItem.current_stock ?? catalogItem.real_stock ?? 0,            total: (catalogItem.purchase_price || 0) * 1
-        };
+      const newItem = {
+    rowId: rowIdCounter++,
+    catalog_id: catalogItem.id,
+    item_id: catalogItem.item_id,
+    name: catalogItem.item?.name || 'Medicine',
+    rate: catalogItem.purchase_price || 0,
+    mrp: catalogItem.base_price || catalogItem.mrp || 0,
+    gst: catalogItem.gst_percent || 0,
+
+    // 🔥 ADD THIS
+    stock: catalogItem.current_stock ?? catalogItem.real_stock ?? 0,
+
+    quantity: 1,
+    total: (catalogItem.purchase_price || 0) * 1
+};
         orderItems.push(newItem);
         renderOrderItemsTable();
         
@@ -624,7 +624,7 @@ stock: catalogItem.current_stock ?? catalogItem.real_stock ?? 0,            tota
     value="${item.quantity}" 
     min="1" 
     max="${item.stock}" 
-    step="1" 
+    step="1"
     data-rowidx="${idx}" 
     style="width: 90px;">                    </td>
                     <td>
@@ -647,37 +647,33 @@ stock: catalogItem.current_stock ?? catalogItem.real_stock ?? 0,            tota
         });
         tbody.innerHTML = html;
         
-      document.querySelectorAll('.qty-input').forEach(input => {
-    input.addEventListener('change', function() {
-        const rowIdx = parseInt(this.dataset.rowidx);
-        let newQty = parseFloat(this.value) || 1;
+        document.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const rowIdx = parseInt(this.dataset.rowidx);
+let newQty = parseFloat(this.value) || 1;
+const maxStock = orderItems[rowIdx].stock || 0;
 
-        const maxStock = orderItems[rowIdx].stock;
-
-        // ❌ Out of stock check
-        if (newQty > maxStock) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Out of Stock',
-                text: `Only ${maxStock} items available`,
-            });
-
-            newQty = maxStock;
-            this.value = newQty;
-        }
-
-        // ❌ below 1 check
-        if (newQty < 1) {
-            newQty = 1;
-            this.value = 1;
-        }
-
-        orderItems[rowIdx].quantity = newQty;
-        orderItems[rowIdx].total = orderItems[rowIdx].rate * newQty;
-
-        renderOrderItemsTable();
+if (newQty > maxStock) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Out of Stock',
+        text: `Only ${maxStock} available`
     });
-});
+    newQty = maxStock;
+    this.value = maxStock;
+}
+
+if (newQty < 1) {
+    newQty = 1;
+    this.value = 1;
+}                if (orderItems[rowIdx]) {
+                    orderItems[rowIdx].quantity = newQty;
+                    orderItems[rowIdx].total = orderItems[rowIdx].rate * newQty;
+                    renderOrderItemsTable();
+                }
+            });
+        });
+        
         document.querySelectorAll('.remove-row-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const rowIdx = parseInt(this.dataset.rowidx);
