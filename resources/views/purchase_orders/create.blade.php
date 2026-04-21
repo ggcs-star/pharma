@@ -365,6 +365,26 @@
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    function formatExpiry(dateStr) {
+    if (!dateStr) return 'N/A';
+
+    const date = new Date(dateStr);
+    if (isNaN(date)) return 'N/A';
+
+    const today = new Date();
+    const diffMonths = (date.getFullYear() - today.getFullYear()) * 12 
+                     + (date.getMonth() - today.getMonth());
+
+    const formatted = date.toLocaleDateString('en-IN', {
+        month: '2-digit',
+        year: 'numeric'
+    });
+
+    if (diffMonths < 0) return `❌ ${formatted}`;
+    if (diffMonths <= 3) return `⚠️ ${formatted}`;
+
+    return formatted;
+}
 (function() {
     'use strict';
     
@@ -413,7 +433,7 @@
             const imgUrl = getImageUrl(sup);
             html += `
                 <div class="supplier-select-card ${isBest ? 'best-price' : ''}" 
-data-supplier="${encodeURIComponent(JSON.stringify(sup))}">
+                     data-supplier='${JSON.stringify(sup)}'>
                     <div class="d-flex gap-3">
                         <img src="${imgUrl}" class="supplier-img" alt="medicine" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
                         <div class="flex-grow-1">
@@ -424,7 +444,7 @@ data-supplier="${encodeURIComponent(JSON.stringify(sup))}">
                             <div class="d-flex flex-wrap gap-2">
                                 <span class="price-chip">💰 PTR: ₹${sup.purchase_price || sup.retailer_price || 0}</span>
                                 <span class="price-chip">🏷️ MRP: ₹${sup.base_price || sup.mrp || 0}</span>
-                                <span class="price-chip">📊 GST: ${sup.gst_percent || 0}%</span>
+<span class="price-chip">⏳ Exp: ${formatExpiry(sup.expiry_date)}</span>
                             </div>
                         </div>
                     </div>
@@ -459,7 +479,7 @@ data-supplier="${encodeURIComponent(JSON.stringify(sup))}">
                     e.stopPropagation();
                     const supplierRaw = card.dataset.supplier;
                     if (!supplierRaw) return;
-const supplier = JSON.parse(decodeURIComponent(supplierRaw));
+                    const supplier = JSON.parse(supplierRaw);
                     await selectSupplier(supplier, card);
                 });
             });
@@ -517,14 +537,23 @@ const supplier = JSON.parse(decodeURIComponent(supplierRaw));
             const imgUrl = getImageUrl(item);
             html += `
                 <div class="col-md-3 col-sm-6">
-                    <div class="catalog-item-card" data-catalog-item="${encodeURIComponent(JSON.stringify(item))}">
+                    <div class="catalog-item-card" data-catalog-item='${JSON.stringify(item)}'>
                         <img src="${imgUrl}" class="img-fluid rounded-3 mb-2" style="height:85px;width:100%;object-fit:cover;" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
                         <div class="small fw-semibold">${escapeHtml(item.item?.name || 'Product')}</div>
                         <div class="text-success fw-bold mt-1">₹${item.purchase_price || 0}</div>
-                        <div class="small text-muted">GST: ${item.gst_percent || 0}%</div>
-                        <div class="small text-secondary">MRP: ₹${item.base_price || item.mrp || 0}</div>
-                        <button type="button" class="btn btn-sm btn-success w-100 mt-2 add-item-btn">+ Add to Order</button>
-                    </div>
+<div class="d-flex justify-content-between mt-1">
+    <span class="small ${item.stock_qty < 10 ? 'text-danger fw-bold' : 'text-muted'}">
+📦 ${item.current_stock ?? item.real_stock ?? 0}    </span>
+    <span class="small text-danger">
+        ⏳ ${formatExpiry(item.expiry_date)}
+    </span>
+</div>                        <div class="small text-secondary">MRP: ₹${item.base_price || item.mrp || 0}</div>
+<button type="button" 
+    class="btn btn-sm btn-success w-100 mt-2 add-item-btn"
+    ${(item.current_stock ?? 0) <= 0 || new Date(item.expiry_date) < new Date() ? 'disabled' : ''}>
+${(item.current_stock ?? 0) <= 0 
+    ? 'Out of Stock' 
+    : (new Date(item.expiry_date) < new Date() ? 'Expired' : '+ Add to Order')}</button>                    </div>
                 </div>
             `;
         });
@@ -532,7 +561,7 @@ const supplier = JSON.parse(decodeURIComponent(supplierRaw));
         
         grid.querySelectorAll('.catalog-item-card').forEach(card => {
             const addBtn = card.querySelector('.add-item-btn');
-const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
+            const itemData = JSON.parse(card.dataset.catalogItem);
             const addItem = () => addItemToOrder(itemData);
             addBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -545,6 +574,7 @@ const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
     }
     
     function addItemToOrder(catalogItem) {
+        
         const newItem = {
             rowId: rowIdCounter++,
             catalog_id: catalogItem.id,
@@ -553,8 +583,8 @@ const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
             rate: catalogItem.purchase_price || 0,
             mrp: catalogItem.base_price || catalogItem.mrp || 0,
             gst: catalogItem.gst_percent || 0,
-            quantity: 1,
-            total: (catalogItem.purchase_price || 0) * 1
+quantity: 1,
+stock: catalogItem.current_stock ?? catalogItem.real_stock ?? 0,            total: (catalogItem.purchase_price || 0) * 1
         };
         orderItems.push(newItem);
         renderOrderItemsTable();
@@ -589,8 +619,15 @@ const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
                         <input type="hidden" name="items[${idx}][supplier_item_catalog_id]" value="${item.catalog_id}">
                     </td>
                     <td>
-                        <input type="number" name="items[${idx}][quantity]" class="form-control qty-input" value="${item.quantity}" min="1" step="1" data-rowidx="${idx}" style="width: 90px;">
-                    </td>
+<input type="number" 
+    name="items[${idx}][quantity]" 
+    class="form-control qty-input" 
+    value="${item.quantity}" 
+    min="1" 
+    max="${item.stock}" 
+    step="1" 
+    data-rowidx="${idx}" 
+    style="width: 90px;">                    </td>
                     <td>
                         <input type="number" name="items[${idx}][rate]" class="form-control rate-input" value="${item.rate}" step="0.01" data-rowidx="${idx}" readonly style="background:#f8f9fa;">
                     </td>
@@ -611,18 +648,37 @@ const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
         });
         tbody.innerHTML = html;
         
-        document.querySelectorAll('.qty-input').forEach(input => {
-            input.addEventListener('change', function() {
-                const rowIdx = parseInt(this.dataset.rowidx);
-                const newQty = parseFloat(this.value) || 1;
-                if (orderItems[rowIdx]) {
-                    orderItems[rowIdx].quantity = newQty;
-                    orderItems[rowIdx].total = orderItems[rowIdx].rate * newQty;
-                    renderOrderItemsTable();
-                }
+      document.querySelectorAll('.qty-input').forEach(input => {
+    input.addEventListener('change', function() {
+        const rowIdx = parseInt(this.dataset.rowidx);
+        let newQty = parseFloat(this.value) || 1;
+
+        const maxStock = orderItems[rowIdx].stock;
+
+        // ❌ Out of stock check
+        if (newQty > maxStock) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Out of Stock',
+                text: `Only ${maxStock} items available`,
             });
-        });
-        
+
+            newQty = maxStock;
+            this.value = newQty;
+        }
+
+        // ❌ below 1 check
+        if (newQty < 1) {
+            newQty = 1;
+            this.value = 1;
+        }
+
+        orderItems[rowIdx].quantity = newQty;
+        orderItems[rowIdx].total = orderItems[rowIdx].rate * newQty;
+
+        renderOrderItemsTable();
+    });
+});
         document.querySelectorAll('.remove-row-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const rowIdx = parseInt(this.dataset.rowidx);

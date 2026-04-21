@@ -91,9 +91,9 @@ $query = PurchaseOrder::with(['supplier','retailer'])
                 'item_id' => $catalog->item_id,
                 'purchase_price' => $catalog->purchase_price,
                 'base_price' => $catalog->base_price,
-                'gst_percent' => $catalog->gst_percent,
-
-                'image_url' => $imageUrl,
+  'expiry_date' => $catalog->expiry_date,
+'stock_qty' => (int) $catalog->getRawOriginal('current_stock'),
+                  'image_url' => $imageUrl,
 
                 'supplier' => [
                     'name' => $catalog->supplier?->name,
@@ -107,48 +107,52 @@ $query = PurchaseOrder::with(['supplier','retailer'])
         })
     );
 }
+
 public function getSupplierItems($supplierId)
 {
-    $data = SupplierItemCatalog::with(['item'])
-        ->where('supplier_id', $supplierId)
-        ->where('is_active', 1)
-        ->whereNotNull('item_id')
-        ->get();
+$data = SupplierItemCatalog::with(['item'])
+    ->select('*') // 🔥 ADD THIS
+    ->where('supplier_id', $supplierId)
+    ->where('is_active', 1)
+    ->whereNotNull('item_id')
+    ->get();
+return response()->json(
+    $data->map(function ($catalog) {
 
-    return response()->json(
-        $data->map(function ($catalog) {
+        $item = $catalog->item;
 
-            $item = $catalog->item;
+        $imageUrl = null;
 
-            $imageUrl = null;
-
-            if ($item && $item->main_image) {
-                if (str_starts_with($item->main_image, 'http')) {
-                    $imageUrl = $item->main_image;
-                } else {
-                    $imageUrl = \Storage::disk('s3')->url($item->main_image);
-                }
+        if ($item && $item->main_image) {
+            if (str_starts_with($item->main_image, 'http')) {
+                $imageUrl = $item->main_image;
+            } else {
+                $imageUrl = \Storage::disk('s3')->url($item->main_image);
             }
+        }
 
-            $imageUrl = $imageUrl ?? asset('images/no-image.png');
+        $imageUrl = $imageUrl ?? asset('images/no-image.png');
 
-            return [
-                'id' => $catalog->id,
-                'item_id' => $catalog->item_id,
-                'purchase_price' => $catalog->purchase_price,
-                'base_price' => $catalog->base_price,
-                'gst_percent' => $catalog->gst_percent,
+   
 
+        return [
+            'id' => $catalog->id,
+            'item_id' => $catalog->item_id,
+            'purchase_price' => $catalog->purchase_price,
+            'base_price' => $catalog->base_price,
+
+            // 🔥 REAL DATA FROM BATCH
+          'expiry_date' => $catalog->expiry_date,
+'stock_qty' => (int) $catalog->getRawOriginal('current_stock'),
+            'image_url' => $imageUrl,
+
+            'item' => [
+                'name' => $item?->name,
                 'image_url' => $imageUrl,
-
-                'item' => [
-                    'name' => $item?->name,
-                    'image_url' => $imageUrl,
-                ],
-            ];
-        })
-    );
-}
+            ],
+        ];
+    })
+);}
     /*
     |--------------------------------------------------------------------------
     | Store
