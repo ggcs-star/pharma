@@ -433,7 +433,7 @@
             const imgUrl = getImageUrl(sup);
             html += `
                 <div class="supplier-select-card ${isBest ? 'best-price' : ''}" 
-                     data-supplier='${JSON.stringify(sup)}'>
+                    data-supplier='${encodeURIComponent(JSON.stringify(sup))}'>
                     <div class="d-flex gap-3">
                         <img src="${imgUrl}" class="supplier-img" alt="medicine" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
                         <div class="flex-grow-1">
@@ -479,8 +479,7 @@
                     e.stopPropagation();
                     const supplierRaw = card.dataset.supplier;
                     if (!supplierRaw) return;
-                    const supplier = JSON.parse(supplierRaw);
-                    await selectSupplier(supplier, card);
+const supplier = JSON.parse(decodeURIComponent(supplierRaw));                    await selectSupplier(supplier, card);
                 });
             });
         } catch (err) {
@@ -537,7 +536,7 @@
             const imgUrl = getImageUrl(item);
             html += `
                 <div class="col-md-3 col-sm-6">
-                    <div class="catalog-item-card" data-catalog-item='${JSON.stringify(item)}'>
+                    <div class="catalog-item-card" data-catalog-item='${encodeURIComponent(JSON.stringify(item))}'>
                         <img src="${imgUrl}" class="img-fluid rounded-3 mb-2" style="height:85px;width:100%;object-fit:cover;" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
                         <div class="small fw-semibold">${escapeHtml(item.item?.name || 'Product')}</div>
                         <div class="text-success fw-bold mt-1">₹${item.purchase_price || 0}</div>
@@ -561,7 +560,7 @@ ${(item.current_stock ?? 0) <= 0
         
         grid.querySelectorAll('.catalog-item-card').forEach(card => {
             const addBtn = card.querySelector('.add-item-btn');
-            const itemData = JSON.parse(card.dataset.catalogItem);
+const itemData = JSON.parse(decodeURIComponent(card.dataset.catalogItem));
             const addItem = () => addItemToOrder(itemData);
             addBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
