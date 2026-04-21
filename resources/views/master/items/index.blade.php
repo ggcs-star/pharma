@@ -156,7 +156,7 @@
 
                             <!-- MANUFACTURER -->
                             <td class="text-center">
-                                <span class="badge bg-light text-dark px-3 py-2 rounded-pill shadow-sm">
+                                <span class="badge bg-light text-primary px-3 py-2 rounded-pill shadow-sm">
                                     {{ $item->manufacturer->name ?? '-' }}
                                 </span>
                             </td>
@@ -169,11 +169,14 @@
                             </td>
 
                             <!-- PACK TYPE -->
-                            <td class="text-center">
-                                <span class="badge bg-light text-dark px-3 py-2 rounded-pill shadow-sm">
-                                    {{ $item->packType->name ?? '-' }}
-                                </span>
-                            </td>
+    <td class="text-center">
+    @foreach($item->packings as $packing)
+                                <span class="badge bg-light text-primary px-3 py-2 rounded-pill shadow-sm">
+
+            {{ str_replace(' of ', ' ', ucfirst($packing->packaging_detail)) }}
+        </span>
+    @endforeach
+</td>
 
                             <!-- RACK -->
 <td class="text-center">

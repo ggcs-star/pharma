@@ -29,8 +29,9 @@ public function index(Request $request)
         'category',
         'subCategory',
         'unit',
-        'packType',
-        'images'
+        'images',
+            'packings.packType' // 🔥 ADD THIS
+
     ]);
 
     // 🔍 SEARCH
@@ -686,7 +687,42 @@ public function import(Request $request)
             $item = Item::create($itemData);
             
             Log::info("ITEM CREATED: {$item->id} - {$name} - Prescription: {$prescription}");
+// =========================
+// PACKAGING SAVE 🔥
+// =========================
 
+$packagingDetail = $rowData['packaging_detail'] ?? null;
+
+// 🔥 qty extract (smart)
+$units = 1;
+
+if (!empty($rowData['qty'])) {
+    preg_match('/\d+/', (string)$rowData['qty'], $matches);
+    $units = $matches[0] ?? 1;
+}
+elseif (!empty($packagingDetail)) {
+    preg_match('/\d+/', (string)$packagingDetail, $matches);
+    $units = $matches[0] ?? 1;
+}
+
+// 🔥 clean pack name
+$packName = strtolower(trim($rowData['package'] ?? 'strip'));
+$packName = ucfirst($packName);
+
+// 🔥 insert into item_packings
+DB::table('item_packings')->updateOrInsert(
+    [
+        'item_id' => $item->id,
+        'pack_id' => $this->getPackId($packName),
+        'qty' => $units,
+    ],
+    [
+        'packaging_detail' => $packagingDetail,
+        'product_form' => $rowData['product_form'] ?? null,
+        'updated_at' => now(),
+        'created_at' => now(),
+    ]
+);
             // =========================
             // SAVE GALLERY IMAGES
             // =========================
