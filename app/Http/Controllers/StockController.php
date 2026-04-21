@@ -25,16 +25,16 @@ class StockController extends Controller
 
     
 
- private function getItemStock($search = null, $fromDate = null, $toDate = null)
+private function getItemStock($search = null, $fromDate = null, $toDate = null)
 {
-    return DB::table('items')
+    return \App\Models\Item::query()
 
-        ->whereIn('items.id', function ($q) {
+        ->whereIn('id', function ($q) {
             $q->select('item_id')->from('purchase_items');
         })
 
         ->when($search, function ($q) use ($search) {
-            $q->where('items.name', 'like', "%{$search}%");
+            $q->where('name', 'like', "%{$search}%");
         })
 
         ->leftJoinSub($this->purchaseItemSubQuery($fromDate, $toDate), 'p', function ($join) {
@@ -46,19 +46,16 @@ class StockController extends Controller
         })
 
         ->select([
-            'items.id',
-            'items.name',
-            'items.main_image',
-
+            'items.*', // 🔥 IMPORTANT
             DB::raw('COALESCE(p.total_purchase, 0) as total_purchase'),
             DB::raw('COALESCE(p.total_return, 0) as total_return'),
             DB::raw('COALESCE(o.total_sold, 0) as total_sold'),
 
             DB::raw('
-            (COALESCE(p.total_purchase,0)
-            - COALESCE(p.total_return,0)
-            - COALESCE(o.total_sold,0)) as available_stock
-        ')
+                (COALESCE(p.total_purchase,0)
+                - COALESCE(p.total_return,0)
+                - COALESCE(o.total_sold,0)) as available_stock
+            ')
         ])
 
         ->orderBy('items.name')
