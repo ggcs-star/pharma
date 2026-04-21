@@ -158,14 +158,23 @@
     $total += $amount;
 
     // Batch tera auto (correct)
-    $batchNo = $item->batch_no ?? 'BATCH-' . ($key + 1) . '-' . time();
 
-    // 🔥 Supplier catalog से expiry
-    $catalog = $item->catalog ?? null;
+// batch fetch from DB
+$batch = null;
 
-    $expiryDate = $catalog && $catalog->expiry_date
-        ? \Carbon\Carbon::parse($catalog->expiry_date)->format('m/Y')
-        : '-';
+if ($po->status === 'delivered') {
+  $batch = \App\Models\Batch::where('item_id', $item->item_id)
+    ->latest()
+    ->first();
+}
+
+// batch दिखाओ
+$batchNo = $batch ? $batch->batch_code : 'Will be generated after delivery';
+
+// expiry भी batch से लो
+$expiryDate = $batch && $batch->expiry_date
+    ? \Carbon\Carbon::parse($batch->expiry_date)->format('m/Y')
+    : '-';
 @endphp
                             <tr>
                                 <td class="text-center">{{ $key + 1 }}</td>
