@@ -153,12 +153,20 @@
                         @php $total = 0; @endphp
                         
                         @forelse($po->items as $key => $item)
-                            @php
-                                $amount = $item->total_amount ?? 0;
-                                $total += $amount;
-                                $batchNo = $item->batch_no ?? 'BATCH-' . ($key + 1) . '-' . time();
-                                $expiryDate = isset($item->expiry_date) ? date('m/Y', strtotime($item->expiry_date)) : date('m/Y', strtotime('+2 years'));
-                            @endphp
+@php
+    $amount = $item->total_amount ?? 0;
+    $total += $amount;
+
+    // Batch tera auto (correct)
+    $batchNo = $item->batch_no ?? 'BATCH-' . ($key + 1) . '-' . time();
+
+    // 🔥 Supplier catalog से expiry
+    $catalog = $item->catalog ?? null;
+
+    $expiryDate = $catalog && $catalog->expiry_date
+        ? \Carbon\Carbon::parse($catalog->expiry_date)->format('m/Y')
+        : '-';
+@endphp
                             <tr>
                                 <td class="text-center">{{ $key + 1 }}</td>
                                 <td class="fw-medium">{{ $item->item->name ?? 'Unknown Item' }}</td>

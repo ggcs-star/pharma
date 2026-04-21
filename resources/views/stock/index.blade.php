@@ -132,17 +132,17 @@
     <a href="{{ route('stock.show', $stock->id) }}" class="text-decoration-none fw-medium d-flex align-items-center gap-2">
 
         <!-- Image -->
-        @if($stock->main_image)
-            <img src="{{ $stock->main_image }}" 
-                 alt="{{ $stock->name }}"
-                 class="rounded"
-                 style="width:32px; height:32px; object-fit:cover;">
-        @else
-            <div class="bg-light rounded d-flex align-items-center justify-content-center"
-                 style="width:32px; height:32px;">
-                <i class="bi bi-image text-muted small"></i>
-            </div>
-        @endif
+       @if($stock->main_image_url)
+    <img src="{{ $stock->main_image_url }}" 
+         alt="{{ $stock->name }}"
+         class="rounded"
+         style="width:32px; height:32px; object-fit:cover;">
+@else
+    <div class="bg-light rounded d-flex align-items-center justify-content-center"
+         style="width:32px; height:32px;">
+        <i class="bi bi-image text-muted small"></i>
+    </div>
+@endif
 
         <!-- Name -->
         <span>

@@ -28,10 +28,18 @@ class SupplierItem extends Model
         return $this->belongsTo(Supplier::class);
     }
 
-    public function getMainImageUrlAttribute()
-    {
-        return $this->main_image
-            ? Storage::disk('s3')->url($this->main_image)
-            : null;
+public function getMainImageUrlAttribute()
+{
+    if (!$this->main_image) {
+        return null;
     }
+
+    // ✅ full URL case
+    if (str_starts_with($this->main_image, 'http')) {
+        return $this->main_image;
+    }
+
+    // ✅ S3 case
+    return Storage::disk('s3')->url($this->main_image);
+}
 }
