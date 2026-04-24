@@ -8,17 +8,23 @@ use App\Models\User; // 🔥 ADD
 
 class PurchaseOrder extends Model
 {
-    protected $fillable = [
-        'supplier_id',
-        'retailer_id', // 🔥 VERY IMPORTANT
-        'order_number',
-        'order_date',
-        'status',
-        'total_amount',
-        'total_gst',
-        'total_discount',
-        'net_amount'
-    ];
+   protected $fillable = [
+    'supplier_id',
+    'retailer_id',
+    'order_number',
+    'order_date',
+    'status',
+    'total_amount',
+    'total_gst',
+    'total_discount',
+    'net_amount',
+
+    // NEW FLOW FIELDS
+    'stock_received',
+    'price_updated',
+    'published_for_sale',
+    'final_mrp',
+];
 
     /*
     |--------------------------------------------------------------------------

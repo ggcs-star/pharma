@@ -52,11 +52,22 @@ class SalesController extends Controller
 
         return view('sales.create', compact('items', 'customers', 'doctors'));
     }
+public function getItemDetails($id)
+{
+    $item = Item::with('packing')->findOrFail($id);
 
+    return response()->json([
+        'pack_type' => $item->packing?->packaging_detail ?? '',
+        'gst' => $item->gst_percent ?? 0,
+
+        // 🔥 MOST IMPORTANT
+        'conversion_factor' => $item->conversion_factor ?? 1,
+    ]);
+}
     // =========================
     // STORE SALE
     // =========================
-   public function store(Request $request)
+public function store(Request $request)
 {
     $validated = $request->validate([
         'bill_date' => 'required|date',
@@ -68,6 +79,7 @@ class SalesController extends Controller
         'items.*.item_id' => 'required|exists:items,id',
         'items.*.batch_id' => 'required|exists:batches,id',
         'items.*.qty' => 'required|numeric|min:1',
+        'items.*.sale_type' => 'required|in:strip,loose',
         'items.*.selling_price' => 'required|numeric|min:0',
     ]);
 
@@ -100,49 +112,125 @@ class SalesController extends Controller
         foreach ($validated['items'] as $row) {
 
             $item = Item::findOrFail($row['item_id']);
-            $batch = Batch::findOrFail($row['batch_id']);
+            $batch = Batch::with('item')->findOrFail($row['batch_id']);
 
-            // ❗ STOCK CHECK
-            if ($batch->stock < $row['qty']) {
-                throw new \Exception("Stock not available for {$item->name}");
+            $qty = $row['qty'];
+            $saleType = $row['sale_type'];
+
+            $conversionFactor = $item->conversion_factor ?? 1;
+
+            /*
+            ========================================
+            STRIP SALE
+            ========================================
+            */
+
+            if ($saleType === 'strip') {
+
+                if ($batch->stock < $qty) {
+                    throw new \Exception("Stock not available for {$item->name}");
+                }
+
+                $base = $qty * $row['selling_price'];
+
+                // strip stock reduce
+                $batch->reduceStock($qty);
+
+                $movementUnit = 'Strip';
+                $unitQty = $qty;
             }
 
-            $base = $row['qty'] * $row['selling_price'];
+            /*
+            ========================================
+            LOOSE TABLET SALE
+            ========================================
+            */
+
+            else {
+
+                if ($batch->loose_stock < $qty) {
+                    throw new \Exception("Loose stock not available for {$item->name}");
+                }
+
+                // Per Tablet Price = Strip Price / Conversion Factor
+                $perTabletPrice = $row['selling_price'] / $conversionFactor;
+
+                $base = $perTabletPrice * $qty;
+
+                // loose stock reduce
+                $batch->reduceLooseStock($qty);
+
+                $movementUnit = 'Tablet';
+                $unitQty = $qty;
+            }
+
+            /*
+            ========================================
+            GST CALCULATION
+            ========================================
+            */
 
             $gstPercent = $item->gst_percent ?? 0;
             $gstAmount = ($base * $gstPercent) / 100;
 
             $final = $base + $gstAmount;
 
+            /*
+            ========================================
+            SALES ITEM SAVE
+            ========================================
+            */
+
             $itemsData[] = [
                 'sale_id' => $sale->id,
                 'item_id' => $item->id,
                 'batch_id' => $batch->id,
-                'quantity' => $row['qty'],
+
+                // strip equivalent qty
+                'quantity' => $saleType === 'strip'
+                    ? $qty
+                    : ($qty / $conversionFactor),
+
+                'sale_type' => $saleType,
+                'unit_qty' => $unitQty,
+
                 'selling_price' => $row['selling_price'],
                 'mrp' => $batch->mrp,
                 'discount' => 0,
+
                 'gst' => $gstPercent,
                 'gst_amount' => $gstAmount,
                 'amount' => $final,
+
                 'created_at' => now(),
                 'updated_at' => now()
             ];
 
-            // 🔻 STOCK CUT
-            $batch->decrement('stock', $row['qty']);
+            /*
+            ========================================
+            STOCK MOVEMENT
+            ========================================
+            */
 
-            // 📦 STOCK MOVEMENT
             StockMovement::create([
                 'item_id' => $item->id,
                 'batch_id' => $batch->id,
+
                 'type' => 'sale',
-                'quantity' => -$row['qty'],
-                'running_stock' => $batch->stock,
+                'sale_type' => $saleType,
+                'movement_unit' => $movementUnit,
+
+                'quantity' => -$unitQty,
+
+                'running_stock' => $saleType === 'strip'
+                    ? $batch->fresh()->stock
+                    : $batch->fresh()->loose_stock,
+
                 'reference_id' => $sale->id,
                 'reference_type' => Sale::class,
+
                 'user_id' => Auth::id(),
-                'transaction_date' => now()
+                'remarks' => 'Sale #' . $billNumber,
             ]);
 
             $subtotal += $base;
@@ -150,34 +238,48 @@ class SalesController extends Controller
             $grandTotal += $final;
         }
 
-        // 💾 SAVE ITEMS
+        /*
+        ========================================
+        SAVE SALES ITEMS
+        ========================================
+        */
+
         SalesItem::insert($itemsData);
 
-        // 💰 UPDATE TOTAL
+        /*
+        ========================================
+        UPDATE SALE TOTALS
+        ========================================
+        */
+
         $sale->update([
             'total_amount' => $subtotal,
             'gst' => $totalGST,
             'net_amount' => $grandTotal
         ]);
 
-        // =========================
-        // 📘 CUSTOMER LEDGER (FIXED ✅)
-        // =========================
+        /*
+        ========================================
+        CUSTOMER LEDGER
+        ========================================
+        */
+
         if (
             $validated['payment_type'] == 'credit' &&
             !empty($validated['customer_id'])
         ) {
 
-            $lastBalance = CustomerLedger::where('customer_id', $validated['customer_id'])
-                ->latest()
-                ->value('balance') ?? 0;
+            $lastBalance = CustomerLedger::where(
+                'customer_id',
+                $validated['customer_id']
+            )->latest()->value('balance') ?? 0;
 
             $newBalance = $lastBalance + $grandTotal;
 
             CustomerLedger::create([
                 'customer_id' => $validated['customer_id'],
                 'reference_id' => $sale->id,
-                'type' => 'sale', // 🔥 IMPORTANT
+                'type' => 'sale',
                 'debit' => $grandTotal,
                 'credit' => 0,
                 'balance' => $newBalance,
@@ -189,7 +291,8 @@ class SalesController extends Controller
 
         DB::commit();
 
-        return redirect()->route('sales.index')
+        return redirect()
+            ->route('sales.index')
             ->with('success', 'Sale Saved Successfully');
 
     } catch (\Exception $e) {

@@ -49,12 +49,54 @@ $query = PurchaseOrder::with(['supplier','retailer'])
     | Create
     |--------------------------------------------------------------------------
     */
-    public function create()
-    {
-        $items = Item::all();
+public function create(Request $request)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Manual + Marketplace दोनों support
+    |--------------------------------------------------------------------------
+    */
 
-        return view('purchase_orders.create', compact('items'));
+    $items = Item::all();
+    $suppliers = Supplier::all();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Marketplace se prefill values
+    |--------------------------------------------------------------------------
+    */
+
+    $selectedSupplier = $request->supplier_id;
+    $selectedItem = $request->item_id;
+    $selectedCatalog = $request->catalog_id;
+
+    $prefilledCatalog = null;
+
+    if ($selectedCatalog) {
+        $prefilledCatalog = SupplierItemCatalog::with([
+            'item',
+            'supplier'
+        ])->find($selectedCatalog);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return View
+    |--------------------------------------------------------------------------
+    */
+
+    return view(
+        'purchase_orders.create',
+        compact(
+            'items',
+            'suppliers',
+            'selectedSupplier',
+            'selectedItem',
+            'selectedCatalog',
+            'prefilledCatalog'
+        )
+    );
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -89,11 +131,19 @@ $query = PurchaseOrder::with(['supplier','retailer'])
                 'id' => $catalog->id,
                 'supplier_id' => $catalog->supplier_id,
                 'item_id' => $catalog->item_id,
+
+                // supplier internal price
                 'purchase_price' => $catalog->purchase_price,
+
+                // 🔥 retailer ko dikhne wala actual PTR
+                'retailer_price' => $catalog->retailer_price,
+
+                // MRP
                 'base_price' => $catalog->base_price,
-  'expiry_date' => $catalog->expiry_date,
-'stock_qty' => (int) $catalog->getRawOriginal('current_stock'),
-                  'image_url' => $imageUrl,
+
+                'expiry_date' => $catalog->expiry_date,
+                'stock_qty' => (int) $catalog->getRawOriginal('current_stock'),
+                'image_url' => $imageUrl,
 
                 'supplier' => [
                     'name' => $catalog->supplier?->name,
@@ -107,53 +157,58 @@ $query = PurchaseOrder::with(['supplier','retailer'])
         })
     );
 }
-
 public function getSupplierItems($supplierId)
 {
-$data = SupplierItemCatalog::with(['item'])
-    ->select('*') // 🔥 ADD THIS
-    ->where('supplier_id', $supplierId)
-    ->where('is_active', 1)
-    ->whereNotNull('item_id')
-    ->get();
-return response()->json(
-    $data->map(function ($catalog) {
+    $data = SupplierItemCatalog::with(['item'])
+        ->select('*') // 🔥 ADD THIS
+        ->where('supplier_id', $supplierId)
+        ->where('is_active', 1)
+        ->whereNotNull('item_id')
+        ->get();
 
-        $item = $catalog->item;
+    return response()->json(
+        $data->map(function ($catalog) {
 
-        $imageUrl = null;
+            $item = $catalog->item;
 
-        if ($item && $item->main_image) {
-            if (str_starts_with($item->main_image, 'http')) {
-                $imageUrl = $item->main_image;
-            } else {
-                $imageUrl = \Storage::disk('s3')->url($item->main_image);
+            $imageUrl = null;
+
+            if ($item && $item->main_image) {
+                if (str_starts_with($item->main_image, 'http')) {
+                    $imageUrl = $item->main_image;
+                } else {
+                    $imageUrl = \Storage::disk('s3')->url($item->main_image);
+                }
             }
-        }
 
-        $imageUrl = $imageUrl ?? asset('images/no-image.png');
+            $imageUrl = $imageUrl ?? asset('images/no-image.png');
 
-   
+            return [
+                'id' => $catalog->id,
+                'item_id' => $catalog->item_id,
 
-        return [
-            'id' => $catalog->id,
-            'item_id' => $catalog->item_id,
-            'purchase_price' => $catalog->purchase_price,
-            'base_price' => $catalog->base_price,
+                // supplier internal price
+                'purchase_price' => $catalog->purchase_price,
 
-            // 🔥 REAL DATA FROM BATCH
-          'expiry_date' => $catalog->expiry_date,
-'stock_qty' => (int) $catalog->getRawOriginal('current_stock'),
-            'image_url' => $imageUrl,
+                // 🔥 retailer ko dikhne wala actual PTR
+                'retailer_price' => $catalog->retailer_price,
 
-            'item' => [
-                'name' => $item?->name,
+                // MRP
+                'base_price' => $catalog->base_price,
+
+                // 🔥 REAL DATA FROM BATCH
+                'expiry_date' => $catalog->expiry_date,
+                'stock_qty' => (int) $catalog->getRawOriginal('current_stock'),
                 'image_url' => $imageUrl,
-            ],
-        ];
-    })
-);}
-    /*
+
+                'item' => [
+                    'name' => $item?->name,
+                    'image_url' => $imageUrl,
+                ],
+            ];
+        })
+    );
+}    /*
     |--------------------------------------------------------------------------
     | Store
     |--------------------------------------------------------------------------
@@ -375,16 +430,9 @@ public function updateStatus(Request $request, $id)
 
         $user = auth()->user();
 
-        /*
-        |------------------------------------------------------------------
-        | 🔐 ROLE BASED FLOW CONTROL
-        |------------------------------------------------------------------
-        */
-
-        // 👉 SUPPLIER FLOW
+        // supplier flow
         if ($user->role == 'supplier') {
 
-            // supplier ownership check
             if ($po->supplier_id != $user->id) {
                 abort(403, 'Unauthorized');
             }
@@ -395,109 +443,28 @@ public function updateStatus(Request $request, $id)
                 'processing' => 'dispatched',
             ];
 
-            if (!isset($allowedTransitions[$oldStatus]) || $allowedTransitions[$oldStatus] != $newStatus) {
+            if (
+                !isset($allowedTransitions[$oldStatus]) ||
+                $allowedTransitions[$oldStatus] != $newStatus
+            ) {
                 throw new \Exception("Invalid status flow (Supplier)");
             }
         }
 
-        // 👉 ADMIN FLOW
-        if ($user->role == 'admin') {
+      
 
-            // admin sirf delivered kare
-            if (!($oldStatus == 'dispatched' && $newStatus == 'delivered')) {
-                throw new \Exception("Admin can only mark delivered");
-            }
-        }
-
-        // 🔥 UPDATE STATUS
         $po->update([
             'status' => $newStatus
         ]);
 
         /*
-        |------------------------------------------------------------------
-        | 🔥 AUTO PURCHASE WHEN DELIVERED
-        |------------------------------------------------------------------
+        OLD AUTO PURCHASE FLOW DISABLED
+
+        dispatched → delivered → auto purchase + auto batch
+
+        New Flow:
+        Receive Stock → Update MRP → Publish For Sale
         */
-        if ($oldStatus == 'dispatched' && $newStatus == 'delivered') {
-
-            if (\App\Models\Purchase::where('purchase_order_id', $po->id)->exists()) {
-                throw new \Exception("Purchase already created for this PO");
-            }
-
-            $purchase = \App\Models\Purchase::create([
-                'supplier_id' => $po->supplier_id,
-                'invoice_number' => 'PO-' . $po->id . '-' . time(),
-                'entry_source' => 'po',
-                'purchase_order_id' => $po->id,
-                'purchase_date' => now(),
-                'payment_type' => 'Pending',
-                'entry_by' => $user->id,
-            ]);
-
-            $totalAmount = 0;
-            $totalGST = 0;
-
-            foreach ($po->items as $poItem) {
-
-                $catalog = \App\Models\SupplierItemCatalog::find($poItem->supplier_item_catalog_id);
-                if (!$catalog) continue;
-
-                $qty = $poItem->quantity;
-                $free = $catalog->free_qty ?? 0;
-                $totalQty = $qty + $free;
-
-                $basic = $qty * $catalog->purchase_price;
-                $gstAmount = ($basic * $catalog->gst_percent) / 100;
-                $total = $basic + $gstAmount;
-
-                $totalAmount += $total;
-                $totalGST += $gstAmount;
-
-                $batch = \App\Models\Batch::create([
-                    'item_id' => $poItem->item_id,
-                    'batch_code' => 'BATCH-' . $poItem->item_id . '-' . time(),
-                    'expiry_date' => $catalog->expiry_date,
-                    'stock' => $totalQty,
-'mrp' => $catalog->base_price,
-                    'ptr' => $catalog->purchase_price,
-                    'selling_price' => $catalog->retailer_price,
-                    'created_by' => $user->id,
-                ]);
-
-                \App\Models\PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'item_id' => $poItem->item_id,
-                    'batch_id' => $batch->id,
-                    'quantity' => $qty,
-                    'free_quantity' => $free,
-    'mrp' => $catalog->base_price, // 🔥 FIX
-                    'ptr' => $catalog->retailer_price,
-                    'gst_percent' => $catalog->gst_percent,
-                    'gst_amount' => $gstAmount,
-                    'taxable_amount' => $basic,
-                    'total_amount' => $total,
-                ]);
-
-                \App\Models\StockMovement::create([
-                    'item_id' => $poItem->item_id,
-                    'batch_id' => $batch->id,
-                    'type' => 'purchase',
-                    'quantity' => $totalQty,
-                    'running_stock' => $batch->stock,
-                    'reference_id' => $purchase->id,
-                    'reference_type' => 'Purchase',
-                    'user_id' => $user->id,
-                    'transaction_date' => now(),
-                ]);
-            }
-
-            $purchase->update([
-                'total_amount' => $totalAmount,
-                'total_gst' => $totalGST,
-                'net_amount' => $totalAmount,
-            ]);
-        }
 
         DB::commit();
 
@@ -505,7 +472,433 @@ public function updateStatus(Request $request, $id)
 
     } catch (\Exception $e) {
         DB::rollBack();
-        return back()->with('error', $e->getMessage());
+
+dd($e->getMessage(), $e->getLine(), $e->getFile());    }
+}
+
+public function receiveStock($id)
+{
+    $order = PurchaseOrder::findOrFail($id);
+
+    $order->stock_received = true;
+    $order->save();
+
+    return back()->with('success', 'Stock Received Successfully');
+}
+
+
+public function updateMrp(Request $request, $id)
+{
+    $request->validate([
+        'final_mrp' => 'required|numeric|min:0',
+
+        /*
+        |--------------------------------------------------------------------------
+        | NEW → strip size / loose conversion
+        |--------------------------------------------------------------------------
+        | Example:
+        | 1 strip = 10 tablets
+        | 1 strip = 9 tablets
+        | 1 strip = 15 tablets
+        |--------------------------------------------------------------------------
+        */
+        'conversion_factor' => 'required|numeric|min:1',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 1 → FETCH ORDER
+        |--------------------------------------------------------------------------
+        */
+
+        $order = PurchaseOrder::with('items')->findOrFail($id);
+
+        if ($order->items->isEmpty()) {
+            return back()->with(
+                'error',
+                'No PO items found'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 2 → UPDATE PO MRP
+        |--------------------------------------------------------------------------
+        */
+
+        $order->final_mrp = $request->final_mrp;
+        $order->price_updated = true;
+        $order->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 3 → UPDATE ALL ITEMS conversion_factor
+        |--------------------------------------------------------------------------
+        | So no manual DB update needed
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($order->items as $poItem) {
+
+            if (!$poItem->item_id) {
+                continue;
+            }
+
+            \App\Models\Item::where('id', $poItem->item_id)
+                ->update([
+                    'conversion_factor' => $request->conversion_factor
+                ]);
+        }
+
+        DB::commit();
+
+        return back()->with(
+            'success',
+            'MRP + Conversion Factor Updated Successfully'
+        );
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        dd(
+            'ERROR => ' . $e->getMessage(),
+            'LINE => ' . $e->getLine(),
+            'FILE => ' . $e->getFile()
+        );
+    }
+}
+public function publishSale($id)
+{
+    DB::beginTransaction();
+
+    try {
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 1 → FETCH ORDER
+        |--------------------------------------------------------------------------
+        */
+
+        $order = PurchaseOrder::with(['items', 'supplier'])
+            ->findOrFail($id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 2 → VALIDATION CHECKS
+        |--------------------------------------------------------------------------
+        */
+
+        if (!$order->stock_received || !$order->price_updated) {
+            return back()->with(
+                'error',
+                'Complete Receive Stock + Update MRP first'
+            );
+        }
+
+        if ((int) $order->published_for_sale === 1) {
+            return back()->with(
+                'error',
+                'This Purchase Order is already published. Please create new PO for new stock.'
+            );
+        }
+
+        if ($order->items->isEmpty()) {
+            return back()->with(
+                'error',
+                'No PO items found'
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 3 → CREATE PURCHASE ENTRY
+        |--------------------------------------------------------------------------
+        */
+
+        $purchase = \App\Models\Purchase::create([
+            'supplier_id'    => $order->supplier_id,
+            'invoice_number' => 'AUTO-PO-' . $order->id . '-' . time(),
+            'purchase_date'  => now(),
+            'payment_type'   => 'Pending',
+            'entry_by'       => auth()->id(),
+
+            'total_amount'   => 0,
+            'total_gst'      => 0,
+            'total_discount' => 0,
+            'net_amount'     => 0,
+        ]);
+
+        if (!$purchase) {
+            throw new \Exception('Purchase creation failed');
+        }
+
+        $totalAmount   = 0;
+        $totalGST      = 0;
+        $totalDiscount = 0;
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 4 → LOOP ALL PO ITEMS
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($order->items as $poItem) {
+
+            if (!$poItem->item_id) {
+                throw new \Exception(
+                    'Item ID missing in PO Item ID: ' . $poItem->id
+                );
+            }
+
+            $catalog = \App\Models\SupplierItemCatalog::with('item')
+                ->find($poItem->supplier_item_catalog_id);
+
+            if (!$catalog) {
+                throw new \Exception(
+                    'Supplier catalog not found for Item ID: ' . $poItem->item_id
+                );
+            }
+
+            $qty  = (float) ($poItem->quantity ?? 0); // strips
+            $rate = (float) ($poItem->rate ?? 0);
+
+            if ($qty <= 0) {
+                throw new \Exception(
+                    'Invalid quantity for Item ID: ' . $poItem->item_id
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | STEP 5 → SAFE MRP LOGIC
+            |--------------------------------------------------------------------------
+            */
+
+            $mrp = (float) (
+                $poItem->final_mrp
+                ?? $order->final_mrp
+                ?? $catalog->base_price
+                ?? 0
+            );
+
+            if ($mrp <= 0) {
+                $mrp = $rate;
+            }
+
+            $gstPercent = (float) ($poItem->gst_percent ?? 0);
+            $discount   = (float) ($poItem->discount_amount ?? 0);
+
+            $basic     = $qty * $rate;
+            $taxable   = $basic - $discount;
+            $gstAmount = ($taxable * $gstPercent) / 100;
+            $total     = $taxable + $gstAmount;
+
+            $totalAmount   += $basic;
+            $totalGST      += $gstAmount;
+            $totalDiscount += $discount;
+
+            /*
+            |--------------------------------------------------------------------------
+            | STEP 6 → STRIP → TABLET CONVERSION LOGIC
+            |--------------------------------------------------------------------------
+            | Example:
+            | 1 strip = 10 tablets
+            | 50 strip = 500 loose stock
+            |--------------------------------------------------------------------------
+            */
+
+            $conversionFactor = (int) (
+                optional($catalog->item)->conversion_factor ?: 10
+            );
+
+            $looseStock = $qty * $conversionFactor;
+
+            /*
+            |--------------------------------------------------------------------------
+            | STEP 7 → BATCH CREATE
+            |--------------------------------------------------------------------------
+            */
+
+            $batch = \App\Models\Batch::create([
+                'item_id' => $poItem->item_id,
+
+                'batch_code' => 'PO-BATCH-' .
+                    $poItem->item_id . '-' .
+                    time() . rand(100, 999),
+
+                'expiry_date' => $catalog->expiry_date
+                    ?? now()->addYear(),
+
+                // strip stock
+                'stock' => $qty,
+
+                // tablet stock
+                'loose_stock' => $looseStock,
+
+                'mrp' => $mrp,
+                'ptr' => $rate,
+                'selling_price' => $mrp,
+
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
+            ]);
+
+            if (!$batch) {
+                throw new \Exception(
+                    'Batch creation failed for Item ID: ' . $poItem->item_id
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | STEP 8 → PURCHASE ITEM CREATE
+            |--------------------------------------------------------------------------
+            */
+
+            $purchaseItem = \App\Models\PurchaseItem::create([
+                'purchase_id' => $purchase->id,
+                'item_id'     => $poItem->item_id,
+                'batch_id'    => $batch->id,
+
+                'quantity'      => $qty,
+                'free_quantity' => 0,
+
+                'mrp' => $mrp,
+                'ptr' => $rate,
+
+                'gst_percent' => $gstPercent,
+                'gst_amount'  => $gstAmount,
+
+                'discount_percent' => 0,
+                'discount_amount'  => $discount,
+
+                'taxable_amount' => $taxable,
+                'total_amount'   => $total,
+            ]);
+
+            if (!$purchaseItem) {
+                throw new \Exception(
+                    'Purchase Item creation failed for Item ID: ' . $poItem->item_id
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | STEP 9 → STOCK MOVEMENT CREATE
+            |--------------------------------------------------------------------------
+            */
+
+            $stockMovement = \App\Models\StockMovement::create([
+                'item_id'  => $poItem->item_id,
+                'batch_id' => $batch->id,
+
+                'type' => 'purchase',
+
+                'quantity'      => $qty,
+                'running_stock' => $qty,
+
+                'reference_id'   => $purchase->id,
+                'reference_type' => 'Purchase',
+
+                'user_id' => auth()->id(),
+
+                'remarks' => 'Auto from PO #' . $order->order_number,
+                'transaction_date' => now(),
+            ]);
+
+            if (!$stockMovement) {
+                throw new \Exception(
+                    'Stock movement failed for Item ID: ' . $poItem->item_id
+                );
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 10 → PURCHASE TOTAL UPDATE
+        |--------------------------------------------------------------------------
+        */
+
+        $net = $totalAmount - $totalDiscount + $totalGST;
+
+        $purchase->update([
+            'total_amount'   => $totalAmount,
+            'total_gst'      => $totalGST,
+            'total_discount' => $totalDiscount,
+            'net_amount'     => $net,
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 11 → SUPPLIER LEDGER
+        |--------------------------------------------------------------------------
+        */
+
+        $lastBalance = \App\Models\SupplierLedger::where(
+            'supplier_id',
+            $order->supplier_id
+        )
+        ->latest()
+        ->value('balance_after') ?? 0;
+
+        $ledger = \App\Models\SupplierLedger::create([
+            'supplier_id' => $order->supplier_id,
+
+            'reference_id'   => $purchase->id,
+            'reference_type' => 'purchase',
+
+            'debit'  => $net,
+            'credit' => 0,
+
+            'balance_after' => $lastBalance + $net,
+
+            'transaction_date' => now(),
+            'entry_by' => auth()->id(),
+
+            'remarks' => 'Auto Purchase from PO #' . $order->order_number,
+        ]);
+
+        if (!$ledger) {
+            throw new \Exception('Supplier ledger creation failed');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 12 → FINAL LOCK
+        |--------------------------------------------------------------------------
+        */
+
+        $order->published_for_sale = 1;
+        $order->save();
+        $order->refresh();
+
+        if ((int) $order->published_for_sale !== 1) {
+            throw new \Exception(
+                'published_for_sale flag not updated'
+            );
+        }
+
+        DB::commit();
+
+        return back()->with(
+            'success',
+            'PO Converted to Purchase Successfully'
+        );
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        dd(
+            'ERROR => ' . $e->getMessage(),
+            'LINE => ' . $e->getLine(),
+            'FILE => ' . $e->getFile()
+        );
     }
 }
     public function convert($id)

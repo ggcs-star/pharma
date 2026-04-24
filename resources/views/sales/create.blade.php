@@ -125,6 +125,7 @@
                                 <th width="6%" class="py-3">Pack</th>
                                 <th width="10%" class="py-3">Batch No</th>
                                 <th width="8%" class="py-3">Expiry</th>
+                                <th width="8%" class="py-3">Sale Type</th>
                                 <th width="6%" class="py-3">Qty <span class="text-danger">*</span></th>
                                 <th width="6%" class="py-3">Disc%</th>
                                 <th width="8%" class="py-3">Price (₹)</th>
@@ -279,6 +280,16 @@ function addRow() {
             <input type="date" name="items[${rowIndex}][expiry]" class="form-control form-control-sm expiry text-center" readonly>
         </td>
         <td>
+    <select
+        name="items[${rowIndex}][sale_type]"
+        class="form-select form-select-sm saleType text-center"
+        required
+    >
+        <option value="strip">Full Strip</option>
+        <option value="loose">Loose Tablet</option>
+    </select>
+</td>
+        <td>
             <input type="number" name="items[${rowIndex}][qty]" class="form-control form-control-sm qty text-center" 
                    step="any" value="0" min="0" required>
         </td>
@@ -380,11 +391,42 @@ document.addEventListener('change', function(e) {
                 }
 
                 row.querySelector('.mrp').value = data.mrp ?? 0;
-                row.querySelector('.price').value = data.sale_price ?? 0;
-                // Trigger calculation after setting price
+row.querySelector('.price').value = data.mrp ?? 0;                // Trigger calculation after setting price
                 triggerCalculation(row);
             })
             .catch(err => console.error('Error fetching batch details:', err));
+    }
+});
+document.addEventListener('change', function(e) {
+
+    if (e.target.classList.contains('saleType')) {
+
+        let row = e.target.closest('tr');
+
+        let saleType = e.target.value;
+        let qtyInput = row.querySelector('.qty');
+        let priceInput = row.querySelector('.price');
+        let mrpInput = row.querySelector('.mrp');
+
+        let stripPrice = parseFloat(mrpInput.value || 0);
+
+        let conversionFactor = 10; // TEMP TEST
+
+        if (saleType === 'strip') {
+
+            qtyInput.placeholder = 'Strip Qty';
+            priceInput.value = stripPrice.toFixed(2);
+
+        } else {
+
+            qtyInput.placeholder = 'Tablet Qty';
+
+            let perTabletPrice = stripPrice / conversionFactor;
+
+            priceInput.value = perTabletPrice.toFixed(2);
+        }
+
+        triggerCalculation(row);
     }
 });
 

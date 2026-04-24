@@ -114,6 +114,7 @@ if ($request->filled('to_date')) {
             'barcode' => $item->barcode ?? null,
             'rack' => $item->rack ?? null,
             'hsn_code' => $item->hsn_code ?? null,
+            
         ]);
     }
 
@@ -137,9 +138,8 @@ public function store(Request $request)
         'items.*.quantity' => 'required|numeric|min:0.01',
         'items.*.free_quantity' => 'nullable|numeric|min:0',
         'items.*.batch_number' => 'required|string|max:255',
-'items.*.expiry_date' => 'required|date|after_or_equal:today', 
-       'items.*.purchase_rate' => 'required|numeric|min:0',
-
+        'items.*.expiry_date' => 'required|date|after_or_equal:today',
+        'items.*.purchase_rate' => 'required|numeric|min:0',
         'items.*.mrp' => 'required|numeric|min:0',
 
         'items.*.gst_percent' => 'nullable|numeric|min:0|max:100',
@@ -154,47 +154,77 @@ public function store(Request $request)
     DB::beginTransaction();
 
     try {
-        // 🔒 Invoice lock (multi-user safe)
+
+        /*
+        |--------------------------------------------------------------------------
+        | Invoice Lock
+        |--------------------------------------------------------------------------
+        */
+
         $exists = Purchase::where('invoice_number', $request->invoice_number)
             ->lockForUpdate()
             ->exists();
 
         if ($exists) {
-            throw new \Exception("Invoice number already exists. Refresh and try again.");
+            throw new \Exception(
+                "Invoice number already exists. Refresh and try again."
+            );
         }
 
         $totalAmount = 0;
         $totalGST = 0;
         $totalDiscount = 0;
 
-        // 🧾 Create Purchase
+        /*
+        |--------------------------------------------------------------------------
+        | Create Purchase
+        |--------------------------------------------------------------------------
+        */
+
         $purchase = Purchase::create([
             'supplier_id' => $request->supplier_id,
             'invoice_number' => $request->invoice_number,
-'purchase_date' => $request->purchase_date ?? now(),
+            'purchase_date' => $request->purchase_date ?? now(),
             'payment_type' => $request->payment_type ?? 'Pending',
             'entry_by' => auth()->id(),
+
             'total_amount' => 0,
             'net_amount' => 0,
             'total_gst' => 0,
             'total_discount' => 0,
         ]);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Loop Items
+        |--------------------------------------------------------------------------
+        */
+
         foreach ($request->items as $itemData) {
 
             $qty = (float) $itemData['quantity'];
             $freeQty = (float) ($itemData['free_quantity'] ?? 0);
+
+            // strip qty
             $totalQty = $qty + $freeQty;
 
-            if ($totalQty <= 0) continue;
+            if ($totalQty <= 0) {
+                continue;
+            }
 
             $rate = (float) $itemData['purchase_rate'];
             $mrp = (float) $itemData['mrp'];
             $gst = (float) ($itemData['gst_percent'] ?? 0);
+
             $discP = (float) ($itemData['discount_percent'] ?? 0);
             $discA = (float) ($itemData['discount_amount'] ?? 0);
 
-            // 💰 Calculations
+            /*
+            |--------------------------------------------------------------------------
+            | Calculations
+            |--------------------------------------------------------------------------
+            */
+
             $basic = $qty * $rate;
 
             if ($discA == 0 && $discP > 0) {
@@ -211,13 +241,44 @@ public function store(Request $request)
             $totalGST += $gstAmount;
             $totalDiscount += $discA;
 
-            // 📦 Batch Logic
+            /*
+            |--------------------------------------------------------------------------
+            | Batch Logic
+            |--------------------------------------------------------------------------
+            */
+
             $batchCode = trim($itemData['batch_number']);
             $expiry = $itemData['expiry_date'];
 
             if (\Carbon\Carbon::parse($expiry)->isPast()) {
-                throw new \Exception("Batch {$batchCode} expired: {$expiry}");
+                throw new \Exception(
+                    "Batch {$batchCode} expired: {$expiry}"
+                );
             }
+
+            /*
+            |--------------------------------------------------------------------------
+            | STRIP → TABLET CONVERSION
+            |--------------------------------------------------------------------------
+            | Example:
+            | 50 strip × 10 = 500 tablets
+            |--------------------------------------------------------------------------
+            */
+
+            $itemMaster = Item::find($itemData['item_id']);
+
+            $conversionFactor = (int) (
+                $itemMaster->conversion_factor ?? 10
+            );
+
+            // loose tablet qty
+            $looseQty = $totalQty * $conversionFactor;
+
+            /*
+            |--------------------------------------------------------------------------
+            | Batch Find
+            |--------------------------------------------------------------------------
+            */
 
             $batch = Batch::where('item_id', $itemData['item_id'])
                 ->where('batch_code', $batchCode)
@@ -226,28 +287,58 @@ public function store(Request $request)
                 ->first();
 
             if ($batch) {
-                // 🔁 Update
+
+                /*
+                |--------------------------------------------------------------------------
+                | Existing Batch Update
+                |--------------------------------------------------------------------------
+                */
+
+                // strip stock
                 $batch->increment('stock', $totalQty);
+
+                // loose stock
+                $batch->increment('loose_stock', $looseQty);
+
                 $batch->mrp = $mrp;
                 $batch->ptr = $rate;
                 $batch->selling_price = $mrp;
                 $batch->save();
+
             } else {
-                // 🆕 Create
+
+                /*
+                |--------------------------------------------------------------------------
+                | New Batch Create
+                |--------------------------------------------------------------------------
+                */
+
                 $batch = Batch::create([
                     'item_id' => $itemData['item_id'],
                     'batch_code' => $batchCode,
                     'expiry_date' => $expiry,
+
+                    // strip stock
                     'stock' => $totalQty,
+
+                    // loose tablet stock
+                    'loose_stock' => $looseQty,
+
                     'mrp' => $mrp,
                     'ptr' => $rate,
                     'selling_price' => $mrp,
+
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
                 ]);
             }
 
-            // 🧾 Purchase Item
+            /*
+            |--------------------------------------------------------------------------
+            | Purchase Item Create
+            |--------------------------------------------------------------------------
+            */
+
             PurchaseItem::create([
                 'purchase_id' => $purchase->id,
                 'item_id' => $itemData['item_id'],
@@ -273,25 +364,40 @@ public function store(Request $request)
                 'hsn_code' => $itemData['hsn_code'] ?? null,
             ]);
 
-            // 📊 Stock Movement
+            /*
+            |--------------------------------------------------------------------------
+            | Stock Movement
+            |--------------------------------------------------------------------------
+            */
+
             StockMovement::create([
                 'item_id' => $itemData['item_id'],
                 'batch_id' => $batch->id,
+
                 'type' => 'purchase',
+
                 'quantity' => $totalQty,
-                    'running_stock' => $batch->stock, 
+                'running_stock' => $batch->stock,
 
                 'reference_id' => $purchase->id,
                 'reference_type' => 'Purchase',
+
                 'user_id' => auth()->id(),
+
                 'remarks' => "Purchase #{$purchase->invoice_number} - {$batchCode}",
-'transaction_date' => $request->purchase_date ?? now(),
+                'transaction_date' => $request->purchase_date ?? now(),
             ]);
         }
 
-        // 💰 Totals
+        /*
+        |--------------------------------------------------------------------------
+        | Totals
+        |--------------------------------------------------------------------------
+        */
+
         $extra = (float) ($request->extra_charges ?? 0);
         $round = (float) ($request->round_off ?? 0);
+
         $net = $totalAmount + $extra + $round;
 
         $purchase->update([
@@ -301,32 +407,54 @@ public function store(Request $request)
             'net_amount' => $net,
         ]);
 
-        // 📒 Supplier Ledger
-        $lastBalance = SupplierLedger::where('supplier_id', $request->supplier_id)
-            ->latest()
-            ->value('balance_after') ?? 0;
+        /*
+        |--------------------------------------------------------------------------
+        | Supplier Ledger
+        |--------------------------------------------------------------------------
+        */
+
+        $lastBalance = SupplierLedger::where(
+            'supplier_id',
+            $request->supplier_id
+        )
+        ->latest()
+        ->value('balance_after') ?? 0;
 
         SupplierLedger::create([
             'supplier_id' => $request->supplier_id,
+
             'reference_id' => $purchase->id,
             'reference_type' => 'purchase',
+
             'debit' => $net,
             'credit' => 0,
+
             'balance_after' => $lastBalance + $net,
-'transaction_date' => $request->purchase_date ?? now(),
+
+            'transaction_date' => $request->purchase_date ?? now(),
             'entry_by' => auth()->id(),
+
             'remarks' => "Purchase #{$request->invoice_number}",
         ]);
 
         DB::commit();
 
-        return redirect()->route('purchase.index')
-            ->with('success', "Purchase #{$request->invoice_number} created successfully.");
+        return redirect()
+            ->route('purchase.index')
+            ->with(
+                'success',
+                "Purchase #{$request->invoice_number} created successfully."
+            );
 
     } catch (\Exception $e) {
+
         DB::rollBack();
 
-        return back()->with('error', 'Failed to create purchase: ' . $e->getMessage())
+        return back()
+            ->with(
+                'error',
+                'Failed to create purchase: ' . $e->getMessage()
+            )
             ->withInput();
     }
 }
