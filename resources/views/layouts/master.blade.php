@@ -118,6 +118,28 @@
             letter-spacing: 1px;
             font-weight: 600;
         }
+        .modal {
+    z-index: 1060 !important;
+}
+
+.modal-backdrop {
+    z-index: 1055 !important;
+}
+
+.modal-dialog {
+    margin-top: 80px;
+}
+
+.modal-content {
+    overflow: visible !important;
+    position: relative;
+    z-index: 1065;
+}
+
+.modal .form-control {
+    position: relative;
+    z-index: 2;
+}
 
         /* ================= MAIN ================= */
         .main {
@@ -179,10 +201,10 @@
             background: #ffffff;
         }
 
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08);
-        }
+   .card:hover:not(.modal-content) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08);
+}
 
         .card-header {
             background: transparent;

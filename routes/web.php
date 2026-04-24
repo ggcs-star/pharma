@@ -107,6 +107,10 @@ Route::get('/get-batch-details/{batch}', function ($batchId) {
     ]);
 });
 Route::middleware(['auth'])->group(function () {
+    Route::get(
+    '/marketplace',
+    [\App\Http\Controllers\MarketplaceController::class, 'index']
+)->name('marketplace.index');
 
     Route::prefix('purchase-return')->name('purchase-return.')->group(function () {
 
@@ -124,6 +128,17 @@ Route::middleware(['auth'])->group(function () {
 Route::resource('purchase-orders', PurchaseOrderController::class);
 Route::get('/item/suppliers', [\App\Http\Controllers\Purchase\PurchaseOrderController::class, 'getItemSuppliers']);
 Route::post('/purchase-orders/{id}/status', [PurchaseOrderController::class, 'updateStatus']);
+Route::post('/po/{id}/receive-stock',
+    [PurchaseOrderController::class, 'receiveStock'])
+    ->name('po.receive.stock');
+
+Route::post('/po/{id}/update-mrp',
+    [PurchaseOrderController::class, 'updateMrp'])
+    ->name('po.update.mrp');
+
+Route::post('/po/{id}/publish-sale',
+    [PurchaseOrderController::class, 'publishSale'])
+    ->name('po.publish.sale');
 Route::get('/purchase/{purchase}/return', [PurchaseReturnController::class, 'create']);
 Route::get(
     '/purchase-orders/{id}/convert',
@@ -156,7 +171,8 @@ Route::get('/api/item-details/{id}', function ($id) {
         'pack_type' => $item->packType->name ?? '',
         'gst' => $item->gst_percent,
         'unit' => $item->unit,
-        'hsn' => $item->hsn_code
+        'hsn' => $item->hsn_code,
+        'conversion_factor' => $item->conversion_factor ?? 1,
     ]);
 });
 Route::get('/api/get-item-full/{id}', function ($id) {
@@ -370,6 +386,10 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('/stock', [StockController::class, 'index'])->name('stock.index');
 Route::get('/stock/{item}', [StockController::class, 'show'])->name('stock.show');
+Route::get(
+    '/stock/batch-ledger/{id}',
+    [StockController::class, 'batchLedger']
+)->name('stock.batch.ledger');
 
 });
 Route::get('/supplier/login', [SupplierAuthController::class, 'showLogin'])->name('supplier.login');

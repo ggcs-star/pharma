@@ -197,6 +197,7 @@
                     </select>
                     <input type="hidden" name="items[${index}][barcode]" class="barcode">
                     <input type="hidden" name="items[${index}][hsn_code]" class="hsnCode">
+                    
                 </td>
                 <td>
                     <input type="number" name="items[${index}][quantity]" class="form-control form-control-sm qty text-center" 

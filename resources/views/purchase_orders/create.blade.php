@@ -533,6 +533,11 @@ supplierCatalogItems.forEach((item, index) => {            const imgUrl = getIma
                 <div class="col-md-3 col-sm-6">
                     <div class="catalog-item-card" data-index="${index}">                        <img src="${imgUrl}" class="img-fluid rounded-3 mb-2" style="height:85px;width:100%;object-fit:cover;" onerror="this.src='https://placehold.co/600x400?text=Medicine'">
                         <div class="small fw-semibold">${escapeHtml(item.item?.name || 'Product')}</div>
+                        <div class="small text-primary fw-semibold mt-1">
+    📦 1 ${item.item?.pack_type || 'Pack'} of 
+    ${item.item?.number_of_units || 1} 
+    ${item.item?.unit || 'Unit'}
+</div>
                         <div class="text-success fw-bold mt-1">₹${item.purchase_price || 0}</div>
 <div class="d-flex justify-content-between mt-1">
     <span class="small ${(item.current_stock ?? item.real_stock ?? 0) < 10 ? 'text-danger fw-bold' : 'text-muted'}">
@@ -575,6 +580,9 @@ const itemData = supplierCatalogItems[index];          const addItem = () => add
     catalog_id: catalogItem.id,
     item_id: catalogItem.item_id,
     name: catalogItem.item?.name || 'Medicine',
+    pack_type: catalogItem.item?.pack_type || '',
+unit: catalogItem.item?.unit || '',
+number_of_units: catalogItem.item?.number_of_units || 1,
     rate: catalogItem.purchase_price || 0,
     mrp: catalogItem.base_price || catalogItem.mrp || 0,
     gst: catalogItem.gst_percent || 0,
@@ -612,11 +620,23 @@ const itemData = supplierCatalogItems[index];          const addItem = () => add
         orderItems.forEach((item, idx) => {
             html += `
                 <tr class="item-main-row">
-                    <td>
-                        ${escapeHtml(item.name)}
-                        <input type="hidden" name="items[${idx}][item_id]" value="${item.item_id}">
-                        <input type="hidden" name="items[${idx}][supplier_item_catalog_id]" value="${item.catalog_id}">
-                    </td>
+                <td>
+    ${escapeHtml(item.name)}
+
+    <div class="small text-primary fw-semibold mt-1">
+        📦 1 ${item.pack_type || 'Pack'} of 
+        ${item.number_of_units || 1} 
+        ${item.unit || 'Unit'}
+    </div>
+
+    <input type="hidden" 
+        name="items[${idx}][item_id]" 
+        value="${item.item_id}">
+
+    <input type="hidden" 
+        name="items[${idx}][supplier_item_catalog_id]" 
+        value="${item.catalog_id}">
+</td>
                     <td>
 <input type="number" 
     name="items[${idx}][quantity]" 
@@ -773,5 +793,63 @@ if (newQty < 1) {
         });
     }
 })();
+
+@if(isset($prefilledCatalog) && $prefilledCatalog)
+document.addEventListener('DOMContentLoaded', function () {
+
+    const itemId = "{{ $prefilledCatalog->item_id }}";
+    const supplierName = "{{ $prefilledCatalog->supplier->name ?? '' }}";
+    const medicineName = "{{ $prefilledCatalog->item->name ?? '' }}";
+
+    /*
+    |--------------------------------------------------------------------------
+    | STEP 1 → Auto select medicine
+    |--------------------------------------------------------------------------
+    */
+
+    setTimeout(function () {
+        const medicineSelect = document.getElementById('medicineSearch');
+
+        if (medicineSelect && medicineSelect.tomselect) {
+            medicineSelect.tomselect.setValue(itemId);
+        }
+    }, 500);
+
+    /*
+    |--------------------------------------------------------------------------
+    | STEP 2 → Auto click supplier
+    |--------------------------------------------------------------------------
+    */
+
+    setTimeout(function () {
+        document.querySelectorAll('.supplier-select-card').forEach(function(card) {
+            if (card.innerText.includes(supplierName)) {
+                card.click();
+            }
+        });
+    }, 2000);
+
+    /*
+    |--------------------------------------------------------------------------
+    | STEP 3 → Auto add item
+    |--------------------------------------------------------------------------
+    */
+
+    setTimeout(function () {
+        document.querySelectorAll('.catalog-item-card').forEach(function(card) {
+            const addBtn = card.querySelector('.add-item-btn');
+
+            if (
+                card.innerText.includes(medicineName) &&
+                addBtn
+            ) {
+                addBtn.click();
+            }
+        });
+    }, 4000);
+
+});
+@endif
+
 </script>
 @endpush

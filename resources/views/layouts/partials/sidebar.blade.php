@@ -191,6 +191,10 @@
     <a href="{{ route('purchase.index') }}" class="{{ request()->routeIs('purchase.index') ? 'active' : '' }}">
         <i class="fa fa-list me-2"></i> Purchase List
     </a>
+    <a href="{{ route('marketplace.index') }}"
+   class="{{ request()->routeIs('marketplace.index') ? 'active' : '' }}">
+    <i class="fa fa-store me-2"></i> Marketplace
+</a>
     <a href="{{ route('purchase-orders.index') }}"
         class="{{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
         <i class="fa fa-file-invoice me-2"></i> Purchase Order
@@ -234,9 +238,10 @@
         <i class="fa fa-boxes me-1"></i> Inventory
     </div>
 
-    <a href="{{ route('stock.index') }}" class="{{ request()->routeIs('stock.index') ? 'active' : '' }}">
-        <i class="fa fa-box me-2"></i> Stock
-    </a>
+<a href="{{ route('stock.index') }}"
+   class="{{ request()->routeIs('stock.*') ? 'active' : '' }}">
+    <i class="fa fa-box me-2"></i> Stock
+</a>
     <!-- Ledger -->
     <div class="menu-title">
         <i class="fa fa-book me-1"></i> Accounts

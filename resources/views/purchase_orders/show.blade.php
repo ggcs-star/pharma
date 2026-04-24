@@ -144,7 +144,7 @@
                             <th class="text-end">Qty</th>
                             <th class="text-end">Free</th>
                             <th class="text-end">MRP (₹)</th>
-                            <th class="text-end">Rate (₹)</th>
+                            <th class="text-end">PTR (₹)</th>
                             <th class="text-center">GST %</th>
                             <th class="text-end">Amount (₹)</th>
                         </tr>
@@ -162,20 +162,47 @@
 // batch fetch from DB
 $batch = null;
 
-if ($po->status === 'delivered') {
-  $batch = \App\Models\Batch::where('item_id', $item->item_id)
-    ->latest()
-    ->first();
+/*
+|--------------------------------------------------------------------------
+| Batch should show after Publish for Sale
+|--------------------------------------------------------------------------
+|
+| Old delivered logic removed
+| New logic:
+| dispatched + published_for_sale = 1
+|
+*/
+
+if (
+    $po->status === 'dispatched'
+    && $po->stock_received == 1
+    && $po->price_updated == 1
+    && $po->published_for_sale == 1
+) {
+    $batch = \App\Models\Batch::where('item_id', $item->item_id)
+        ->latest()
+        ->first();
 }
 
-// batch दिखाओ
-$batchNo = $batch ? $batch->batch_code : 'Will be generated after delivery';
+/*
+|--------------------------------------------------------------------------
+| Batch Number
+|--------------------------------------------------------------------------
+*/
 
-// expiry भी batch से लो
-$expiryDate = $batch && $batch->expiry_date
+$batchNo = $batch
+    ? $batch->batch_code
+    : 'Pending Publish For Sale';
+
+/*
+|--------------------------------------------------------------------------
+| Expiry Date
+|--------------------------------------------------------------------------
+*/
+
+$expiryDate = ($batch && $batch->expiry_date)
     ? \Carbon\Carbon::parse($batch->expiry_date)->format('m/Y')
-    : '-';
-@endphp
+    : '-';@endphp
                             <tr>
                                 <td class="text-center">{{ $key + 1 }}</td>
                                 <td class="fw-medium">{{ $item->item->name ?? 'Unknown Item' }}</td>

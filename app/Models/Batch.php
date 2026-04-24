@@ -11,6 +11,7 @@ class Batch extends Model
         'batch_code',
         'expiry_date',
         'stock',
+        'loose_stock', // 🔥 ADD THIS
         'mrp',
         'ptr',
         'discount',
@@ -28,6 +29,7 @@ class Batch extends Model
     protected $casts = [
         'expiry_date' => 'date',
         'stock' => 'decimal:2',
+        'loose_stock' => 'integer', // 🔥 ADD THIS
         'mrp' => 'decimal:2',
         'ptr' => 'decimal:2',
         'discount' => 'decimal:2',
@@ -80,11 +82,64 @@ class Batch extends Model
         }
 
         $this->decrement('stock', $qty);
+
+        // 🔥 loose stock also reduce
+        if ($this->item && $this->item->conversion_factor) {
+            $this->decrement(
+                'loose_stock',
+                ($qty * $this->item->conversion_factor)
+            );
+        }
     }
 
     public function increaseStock($qty)
     {
         $this->increment('stock', $qty);
+
+        // 🔥 loose stock also increase
+        if ($this->item && $this->item->conversion_factor) {
+            $this->increment(
+                'loose_stock',
+                ($qty * $this->item->conversion_factor)
+            );
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Loose Sale Methods 🔥
+    |--------------------------------------------------------------------------
+    */
+
+    public function reduceLooseStock($qty)
+    {
+        if ($this->loose_stock < $qty) {
+            throw new \Exception("Insufficient loose stock in batch {$this->batch_code}");
+        }
+
+        $this->decrement('loose_stock', $qty);
+
+        // 🔥 strip stock auto recalculate
+        $conversionFactor = $this->item->conversion_factor ?? 1;
+
+        $fresh = $this->fresh();
+
+        $fresh->update([
+            'stock' => floor($fresh->loose_stock / $conversionFactor)
+        ]);
+    }
+
+    public function increaseLooseStock($qty)
+    {
+        $this->increment('loose_stock', $qty);
+
+        $conversionFactor = $this->item->conversion_factor ?? 1;
+
+        $fresh = $this->fresh();
+
+        $fresh->update([
+            'stock' => floor($fresh->loose_stock / $conversionFactor)
+        ]);
     }
 
     /*
@@ -136,5 +191,4 @@ class Batch extends Model
     {
         return $this->batch_code . ' (Exp: ' . $this->expiry_date->format('m/Y') . ')';
     }
-    
 }
