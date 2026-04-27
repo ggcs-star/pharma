@@ -208,6 +208,7 @@
                         <th class="text-center">Items</th>
                         <th class="text-end">Total</th>
                         <th class="text-center">Status</th>
+                        <th class="text-center">Workflow</th>
                         <th class="text-center pe-3">Actions</th>
                     </tr>
                 </thead>
@@ -225,6 +226,17 @@
                     @endphp
 
                     @forelse($orders as $order)
+                    @php
+                        // Calculate workflow progress statuses
+                        $step1Completed = $order->stock_received;
+                        $step2Completed = $order->price_updated;
+                        $step3Completed = (int)$order->published_for_sale === 1;
+                        
+                        $showStockButton = ($order->status == 'dispatched' && !$order->stock_received);
+                        $showMrpButton = ($order->status == 'dispatched' && $order->stock_received && !$order->price_updated);
+                        $showPublishButton = ($order->status == 'dispatched' && $order->stock_received && $order->price_updated && (int)$order->published_for_sale === 0);
+                        $showPublishedBadge = ($order->status == 'dispatched' && $order->stock_received && $order->price_updated && (int)$order->published_for_sale === 1);
+                    @endphp
                     <tr class="order-row" data-order-id="{{ $order->id }}">
                         <td class="ps-3">
                             <span class="text-muted small">#{{ $order->id }}</span>
@@ -262,17 +274,63 @@
                                 {{ ucfirst($order->status) }}
                             </span>
                         </td>
+                        {{-- WORKFLOW PROGRESS INDICATOR --}}
+                        <td class="text-center">
+                            <div class="workflow-progress" data-bs-toggle="tooltip" title="Workflow Status: Step 1: Stock In | Step 2: MRP Update | Step 3: Publish">
+                                <div class="workflow-steps">
+                                    <div class="workflow-step {{ $step1Completed ? 'completed' : 'pending' }}">
+                                        <div class="step-icon">
+                                            @if($step1Completed)
+                                                <i class="fas fa-check-circle"></i>
+                                            @else
+                                                <i class="fas fa-box-open"></i>
+                                            @endif
+                                        </div>
+                                        <span class="step-label">Stock</span>
+                                    </div>
+                                    <div class="workflow-connector {{ $step2Completed ? 'active' : '' }}"></div>
+                                    <div class="workflow-step {{ $step2Completed ? 'completed' : ($step1Completed ? 'active' : 'pending') }}">
+                                        <div class="step-icon">
+                                            @if($step2Completed)
+                                                <i class="fas fa-check-circle"></i>
+                                            @elseif($step1Completed && !$step2Completed)
+                                                <i class="fas fa-spinner fa-pulse"></i>
+                                            @else
+                                                <i class="fas fa-tag"></i>
+                                            @endif
+                                        </div>
+                                        <span class="step-label">MRP</span>
+                                    </div>
+                                    <div class="workflow-connector {{ $step3Completed ? 'active' : '' }}"></div>
+                                    <div class="workflow-step {{ $step3Completed ? 'completed' : ($step2Completed ? 'active' : 'pending') }}">
+                                        <div class="step-icon">
+                                            @if($step3Completed)
+                                                <i class="fas fa-check-circle"></i>
+                                            @elseif($step2Completed && !$step3Completed)
+                                                <i class="fas fa-spinner fa-pulse"></i>
+                                            @else
+                                                <i class="fas fa-store"></i>
+                                            @endif
+                                        </div>
+                                        <span class="step-label">Live</span>
+                                    </div>
+                                </div>
+                                <div class="workflow-progress-bar">
+                                    <div class="workflow-progress-fill" style="width: {{ ($step1Completed ? 33 : 0) + ($step2Completed ? 33 : 0) + ($step3Completed ? 34 : 0) }}%"></div>
+                                </div>
+                            </div>
+                        </td>
                         <td class="text-center pe-3">
                             <div class="action-buttons">
                                 {{-- View Button - Always Visible --}}
                                 <a href="{{ route('purchase-orders.show', $order->id) }}" 
                                    class="action-btn view-btn" 
                                    data-bs-toggle="tooltip" 
-                                   title="View Order">
+                                   title="View Order Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
 
-                                {{-- Cancel Button - Only before dispatched (Pending, Confirmed, Processing) --}}
+                                {{-- Cancel Button - Only before dispatched --}}
                                 @if(
                                     !$order->published_for_sale && 
                                     !in_array($order->status, ['dispatched', 'delivered', 'cancelled', 'rejected'])
@@ -293,82 +351,69 @@
                                     </form>
                                 @endif
 
-                                {{-- 1. Receive Stock Button - Only when status is dispatched AND stock not received --}}
-                                @if($order->status == 'dispatched' && !$order->stock_received)
+                                {{-- STEP 1: Receive Stock Button --}}
+                                @if($showStockButton)
                                     <form method="POST" action="{{ url('/po/'.$order->id.'/receive-stock') }}" class="d-inline">
                                         @csrf
                                         <button type="submit"
-                                                class="action-btn receive-btn"
+                                                class="action-btn-primary receive-stock-btn"
                                                 data-bs-toggle="tooltip"
-                                                title="Receive Stock">
-                                            <i class="fas fa-dolly-flatbed"></i>
+                                                data-bs-placement="top"
+                                                title="Step 1: Receive stock from supplier into inventory">
+                                            <i class="fas fa-box-open me-1"></i>
+                                            <span class="btn-step-number">1</span>
+                                            <span class="btn-text">Stock In</span>
                                         </button>
                                     </form>
                                 @endif
 
-                                {{-- 2. Update MRP Button - Only after stock received AND price not updated yet --}}
-                                @if($order->status == 'dispatched' && $order->stock_received && !$order->price_updated)
+                                {{-- STEP 2: Update MRP Button --}}
+                                @if($showMrpButton)
                                     <button type="button"
-                                            class="action-btn price-btn"
+                                            class="action-btn-primary update-mrp-btn"
                                             data-bs-toggle="modal"
                                             data-bs-target="#updatePriceModal{{ $order->id }}"
-                                            title="Update Selling Price">
-                                        <i class="fas fa-tag"></i>
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="Step 2: Set final selling MRP before sales">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i>
+                                        <span class="btn-step-number">2</span>
+                                        <span class="btn-text">Update MRP</span>
                                     </button>
                                 @endif
 
-                                {{-- 3. Publish for Sale Button OR Published Badge - IMPROVED LOGIC --}}
-                            @if(
-    $order->status == 'dispatched' &&
-    $order->stock_received &&
-    $order->price_updated
-)
-
-    {{-- Only one time publish allowed --}}
-
-    @if((int) $order->published_for_sale === 0)
-
-        {{-- First time only → Show Publish Button --}}
-
-        <form method="POST"
-              action="{{ url('/po/'.$order->id.'/publish-sale') }}"
-              class="d-inline publish-form"
-              data-order-id="{{ $order->id }}">
-
-            @csrf
-
-            <button type="submit"
-                    class="action-btn publish-btn"
-                    data-bs-toggle="tooltip"
-                    title="Publish for Sale">
-
-                <i class="fas fa-store"></i>
-
-            </button>
-        </form>
-
-    @else
-
-        {{-- After publish → Button removed forever --}}
-
-        <span class="published-badge"
-              data-bs-toggle="tooltip"
-              title="Already Published for Sale">
-
-            <i class="fas fa-check-circle me-1"></i>
-            Published
-
-        </span>
-
-    @endif
-
-@endif
+                                {{-- STEP 3: Publish for Sale Button OR Published Badge --}}
+                                @if($showPublishButton)
+                                    <form method="POST"
+                                          action="{{ url('/po/'.$order->id.'/publish-sale') }}"
+                                          class="d-inline publish-form"
+                                          data-order-id="{{ $order->id }}">
+                                        @csrf
+                                        <button type="submit"
+                                                class="action-btn-primary publish-sale-btn"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-placement="top"
+                                                title="Step 3: Publish products to Sales Entry">
+                                            <i class="fas fa-bullhorn me-1"></i>
+                                            <span class="btn-step-number">3</span>
+                                            <span class="btn-text">Make Live</span>
+                                        </button>
+                                    </form>
+                                @elseif($showPublishedBadge)
+                                    <span class="published-badge"
+                                          data-bs-toggle="tooltip"
+                                          data-bs-placement="top"
+                                          title="Products are now available for sale in the system">
+                                        <i class="fas fa-circle-check me-1"></i>
+                                        ✓ Published Successfully
+                                    </span>
+                                @endif
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center py-5">
+                        <td colspan="9" class="text-center py-5">
                             <div class="empty-state">
                                 <div class="empty-icon">
                                     <i class="fas fa-shopping-cart"></i>
@@ -405,7 +450,7 @@
 
 @endsection
 
-{{-- ALL MODALS PLACED OUTSIDE TABLE FOR PROPER BOOTSTRAP RENDERING --}}
+{{-- ALL MODALS PLACED OUTSIDE TABLE --}}
 @if($orders->isNotEmpty())
     @foreach($orders as $order)
     <!-- Update Price Modal for Order #{{ $order->id }} -->
@@ -420,8 +465,8 @@
                                 <i class="fas fa-tag text-primary fa-lg"></i>
                             </div>
                             <div>
-                                <h5 class="modal-title fw-bold mb-0" id="updatePriceModalLabel{{ $order->id }}">Update Selling Price</h5>
-                                <p class="text-muted small mb-0 mt-1">Set final MRP for all products in this order</p>
+                                <h5 class="modal-title fw-bold mb-0" id="updatePriceModalLabel{{ $order->id }}">Update Final MRP</h5>
+                                <p class="text-muted small mb-0 mt-1">Set final selling MRP for all products in this order</p>
                             </div>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -450,68 +495,74 @@
                             </div>
                         </div>
                         
-                        <!-- MRP Input - FIXED -->
-                        <div class="mb-3">
-    <label class="form-label fw-semibold mb-2">
-        <i class="fas fa-rupee-sign text-primary me-1"></i>
-        Final MRP (₹)
-    </label>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 22%;">Item Name</th>
+                                        <th style="width: 15%;">PTR</th>
+                                        <th style="width: 15%;">Supplier MRP</th>
+                                        <th style="width: 20%;">Final MRP</th>
+                                        <th style="width: 20%;">Strip Size</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($order->items as $index => $poItem)
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold">
+                                                {{ $poItem->item->name ?? 'Item Not Found' }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="fw-semibold text-primary">
+                                                ₹ {{ number_format($poItem->rate ?? 0, 2) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-semibold text-success">
+                                                ₹ {{ number_format(
+                                                    optional($poItem->supplierItemCatalog)->base_price ?? 0,
+                                                    2
+                                                ) }}
+                                            </span>
+                                        </td>
+                                        <td style="display:none;">
+                                            <input type="hidden"
+                                                   name="items[{{ $index }}][item_id]"
+                                                   value="{{ $poItem->item_id }}">
+                                        </td>
+                                        <td>
+                                            <input type="number"
+                                                   step="0.01"
+                                                   min="0.01"
+                                                   required
+                                                   class="form-control final-mrp-input"
+                                                   name="items[{{ $index }}][final_mrp]"
+                                                   placeholder="Enter MRP"
+                                                   data-order-id="{{ $order->id }}"
+                                                   data-purchase-total="{{ $order->total_amount ?? 0 }}">
+                                        </td>
+                                        <td>
+    <input type="hidden"
+           name="items[{{ $index }}][conversion_factor]"
+           value="{{ $poItem->item->conversion_factor ?? 1 }}">
 
-    <div class="input-group input-group-lg">
-        <span class="input-group-text bg-light border-end-0">
-            <i class="fas fa-rupee-sign text-muted"></i>
-        </span>
-
-        <input type="number"
-               step="0.01"
-               name="final_mrp"
-               class="form-control border-start-0"
-               placeholder="Enter Final MRP"
-               value=""
-               autocomplete="off"
-               min="0.01"
-               required>
+    <div class="form-control bg-light fw-semibold text-center">
+        {{ $poItem->item->conversion_factor ?? 1 }}
     </div>
+</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
 
-    <div class="form-text text-muted mt-2">
-        <i class="fas fa-info-circle me-1"></i>
-        Final selling price for this PO
-    </div>
-</div>
-
-{{-- NEW → Conversion Factor Input --}}
-<div class="mb-3">
-    <label class="form-label fw-semibold mb-2">
-        <i class="fas fa-capsules text-primary me-1"></i>
-        Strip Size / Conversion Factor
-    </label>
-
-    <div class="input-group input-group-lg">
-        <span class="input-group-text bg-light border-end-0">
-            <i class="fas fa-layer-group text-muted"></i>
-        </span>
-
-        <input type="number"
-               step="1"
-               name="conversion_factor"
-               class="form-control border-start-0"
-               placeholder="Example: 10"
-               value="10"
-               autocomplete="off"
-               min="1"
-               required>
-    </div>
-
-    <div class="form-text text-muted mt-2">
-        <i class="fas fa-info-circle me-1"></i>
-        Example:
-        1 strip = 10 tablets → enter 10<br>
-        1 strip = 9 tablets → enter 9<br>
-        1 strip = 15 tablets → enter 15
-    </div>
-</div>
+                        <small class="text-muted">
+                            Example: 1 strip = 10 tablets, 1 strip = 9 tablets, 1 strip = 15 tablets
+                        </small>
                         
-                        <!-- Price Preview - FIXED DEFAULT TEXT -->
+                        <!-- Price Preview -->
                         <div class="alert alert-info bg-info bg-opacity-10 border-0 rounded-3 mt-3">
                             <div class="d-flex gap-2">
                                 <i class="fas fa-calculator text-info mt-1"></i>
@@ -545,6 +596,9 @@
 <style>
     :root {
         --primary-gradient: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --purple-color: #8b5cf6;
         --shadow-sm: 0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03);
         --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
         --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025);
@@ -564,6 +618,7 @@
         color: white;
     }
     
+    /* Statistics Cards */
     .stat-card {
         background: white;
         border-radius: 1rem;
@@ -742,16 +797,18 @@
         letter-spacing: 0.3px;
     }
     
+    /* ========== ENTERPRISE ACTION BUTTONS ========== */
     .action-buttons {
         display: flex;
-        justify-content: center;
+        justify-content: flex-start;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
+        flex-wrap: wrap;
     }
     
     .action-btn {
-        width: 32px;
-        height: 32px;
+        width: 34px;
+        height: 34px;
         border-radius: 8px;
         display: inline-flex;
         align-items: center;
@@ -767,27 +824,83 @@
         transform: translateY(-1px);
     }
     
+    /* Primary Action Buttons with Labels */
+    .action-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: none;
+        transition: var(--transition-default);
+        cursor: pointer;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    .action-btn-primary .btn-step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        font-size: 0.65rem;
+        font-weight: 700;
+    }
+    
+    .action-btn-primary .btn-text {
+        font-weight: 600;
+    }
+    
+    /* Receive Stock Button - Green */
+    .receive-stock-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+    }
+    
+    .receive-stock-btn:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+    
+    /* Update MRP Button - Orange */
+    .update-mrp-btn {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border: none;
+    }
+    
+    .update-mrp-btn:hover {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        color: white;
+    }
+    
+    /* Publish Sale Button - Purple */
+    .publish-sale-btn {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        border: none;
+    }
+    
+    .publish-sale-btn:hover {
+        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        color: white;
+    }
+    
     .view-btn:hover {
         background: #0d6efd;
         border-color: #0d6efd;
-        color: white;
-    }
-    
-    .receive-btn:hover {
-        background: #10b981;
-        border-color: #10b981;
-        color: white;
-    }
-    
-    .price-btn:hover {
-        background: #f59e0b;
-        border-color: #f59e0b;
-        color: white;
-    }
-    
-    .publish-btn:hover {
-        background: #8b5cf6;
-        border-color: #8b5cf6;
         color: white;
     }
     
@@ -797,14 +910,15 @@
         color: white;
     }
     
-    /* Enterprise Published Badge */
+    /* Published Badge */
     .published-badge {
         display: inline-flex;
         align-items: center;
-        padding: 0.25rem 0.75rem;
+        gap: 6px;
+        padding: 0.5rem 1rem;
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         color: white;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         font-weight: 600;
         border-radius: 30px;
         letter-spacing: 0.3px;
@@ -816,15 +930,100 @@
     }
     
     .published-badge i {
+        font-size: 0.8rem;
+    }
+    
+    /* ========== WORKFLOW PROGRESS INDICATOR ========== */
+    .workflow-progress {
+        min-width: 160px;
+        padding: 4px 0;
+    }
+    
+    .workflow-steps {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+    
+    .workflow-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        position: relative;
+    }
+    
+    .step-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 0.7rem;
+        transition: all 0.2s ease;
     }
     
-    .published-badge:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.25);
-        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    .workflow-step.completed .step-icon {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
     }
     
+    .workflow-step.active .step-icon {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        color: white;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2);
+    }
+    
+    .workflow-step.pending .step-icon {
+        background: #f1f5f9;
+        color: #94a3b8;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .step-label {
+        font-size: 0.6rem;
+        font-weight: 500;
+        color: #64748b;
+    }
+    
+    .workflow-step.completed .step-label,
+    .workflow-step.active .step-label {
+        color: #1e293b;
+        font-weight: 600;
+    }
+    
+    .workflow-connector {
+        flex: 1;
+        height: 2px;
+        background: #e2e8f0;
+        margin: 0 4px;
+        position: relative;
+        top: -10px;
+    }
+    
+    .workflow-connector.active {
+        background: linear-gradient(90deg, #10b981, #0d6efd);
+    }
+    
+    .workflow-progress-bar {
+        height: 3px;
+        background: #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    
+    .workflow-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #0d6efd, #8b5cf6);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+    
+    /* Empty State */
     .empty-state {
         padding: 3rem 2rem;
         text-align: center;
@@ -843,6 +1042,7 @@
         color: #0d6efd;
     }
     
+    /* Pagination */
     .pagination {
         gap: 4px;
         margin: 0;
@@ -896,6 +1096,37 @@
         border: none;
     }
     
+    /* Table Responsive */
+    @media (max-width: 1200px) {
+        .action-btn-primary .btn-text {
+            display: none;
+        }
+        
+        .action-btn-primary {
+            padding: 0.5rem 0.8rem;
+        }
+        
+        .action-btn-primary i {
+            margin-right: 0 !important;
+        }
+        
+        .workflow-progress {
+            min-width: 120px;
+        }
+        
+        .step-label {
+            display: none;
+        }
+        
+        .workflow-steps {
+            margin-bottom: 0;
+        }
+        
+        .workflow-connector {
+            top: 0;
+        }
+    }
+    
     @media (max-width: 768px) {
         .stat-value {
             font-size: 1.5rem;
@@ -913,13 +1144,13 @@
             font-size: 0.7rem;
         }
         
-        .published-badge {
-            padding: 0.2rem 0.6rem;
-            font-size: 0.65rem;
+        .action-btn-primary {
+            padding: 0.35rem 0.6rem;
         }
         
-        .published-badge i {
-            font-size: 0.65rem;
+        .published-badge {
+            padding: 0.35rem 0.8rem;
+            font-size: 0.7rem;
         }
         
         .table-modern tbody td {
@@ -933,6 +1164,16 @@
         .amount {
             font-size: 0.8rem;
         }
+        
+        .workflow-progress {
+            min-width: 90px;
+        }
+        
+        .step-icon {
+            width: 22px;
+            height: 22px;
+            font-size: 0.6rem;
+        }
     }
 </style>
 @endpush
@@ -944,7 +1185,9 @@
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                placement: tooltipTriggerEl.dataset.bsPlacement || 'top'
+            })
         });
         
         // Auto-submit filters
@@ -983,13 +1226,13 @@
                 const formElement = this;
                 
                 Swal.fire({
-                    title: 'Publish for Sale?',
-                    text: "This will make all products available for sale in the inventory.",
+                    title: 'Make Live for Sales?',
+                    text: "This will publish all products for sale in the inventory. This action cannot be undone.",
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#8b5cf6',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, publish',
+                    confirmButtonText: 'Yes, make live',
                     cancelButtonText: 'Cancel',
                     reverseButtons: true,
                     customClass: {
@@ -1000,8 +1243,8 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         Swal.fire({
-                            title: 'Processing...',
-                            text: 'Publishing products for sale',
+                            title: 'Publishing...',
+                            text: 'Making products available for sale',
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
@@ -1012,52 +1255,104 @@
                 });
             });
         });
+        
+        // Handle Receive Stock confirmation
+        document.querySelectorAll('.receive-stock-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const form = this.closest('form');
+                if(form) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: 'Receive Stock?',
+                        text: "This will add the stock to your inventory. Continue?",
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, receive stock',
+                        cancelButtonText: 'Cancel',
+                        reverseButtons: true,
+                        customClass: {
+                            popup: 'rounded-4',
+                            confirmButton: 'btn btn-success px-4',
+                            cancelButton: 'btn btn-light px-4'
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            Swal.fire({
+                                title: 'Processing...',
+                                text: 'Receiving stock into inventory',
+                                allowOutsideClick: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                    form.submit();
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        });
     });
-function updateProfitPreview(orderId, totalAmount) {
-    const modal = document.getElementById(`updatePriceModal${orderId}`);
-    if (!modal) return;
-
-    const priceInput = modal.querySelector('input[name="final_mrp"]');
-    const profitPreviewSpan = modal.querySelector('.profit-preview-text');
-
-    if (!priceInput || !profitPreviewSpan) return;
-
-    priceInput.addEventListener('input', function () {
-        const mrp = parseFloat(this.value);
-
-        if (!mrp || mrp <= 0) {
+    
+    // Profit preview function
+    function updateProfitPreview(orderId, totalAmount) {
+        const modal = document.getElementById(`updatePriceModal${orderId}`);
+        if (!modal) return;
+        
+        const priceInputs = modal.querySelectorAll('.final-mrp-input');
+        const profitPreviewSpan = modal.querySelector('.profit-preview-text');
+        
+        if (!priceInputs.length || !profitPreviewSpan) return;
+        
+        const calculateTotalMRP = () => {
+            let totalMRP = 0;
+            priceInputs.forEach(input => {
+                const value = parseFloat(input.value);
+                if (!isNaN(value) && value > 0) {
+                    totalMRP += value;
+                }
+            });
+            return totalMRP;
+        };
+        
+        const updatePreview = () => {
+            const totalMRP = calculateTotalMRP();
+            
+            if (totalMRP === 0) {
+                profitPreviewSpan.innerHTML = `
+                    <span class="text-muted">
+                        Enter Final MRP to see profit preview
+                    </span>
+                `;
+                return;
+            }
+            
+            const totalProfit = totalMRP - totalAmount;
+            const marginPercent = totalAmount > 0 ? ((totalProfit / totalAmount) * 100) : 0;
+            
             profitPreviewSpan.innerHTML = `
-                <span class="text-muted">
-                    Enter Final MRP to see profit preview
+                <span class="${totalProfit >= 0 ? 'text-success' : 'text-danger'} fw-semibold">
+                    ₹ ${totalProfit.toFixed(2)} profit
                 </span>
+                <small class="d-block text-muted">
+                    ${marginPercent.toFixed(1)}% margin
+                </small>
             `;
-            return;
-        }
-
-        const totalProfit = mrp - totalAmount;
-
-        const marginPercent = totalAmount > 0
-            ? ((totalProfit / totalAmount) * 100)
-            : 0;
-
-        profitPreviewSpan.innerHTML = `
-            <span class="${totalProfit >= 0 ? 'text-success' : 'text-danger'} fw-semibold">
-                ₹ ${totalProfit.toFixed(2)} profit
-            </span>
-            <small class="d-block text-muted">
-                ${marginPercent.toFixed(1)}% margin
-            </small>
-        `;
-    });
-}
-
+        };
+        
+        priceInputs.forEach(input => {
+            input.addEventListener('input', updatePreview);
+        });
+    }
+    
     // Initialize profit preview for each order modal
- @foreach($orders as $order)
-updateProfitPreview(
-    {{ $order->id }},
-    {{ $order->total_amount ?? 0 }}
-);
-@endforeach
+    @foreach($orders as $order)
+        updateProfitPreview(
+            {{ $order->id }},
+            {{ $order->total_amount ?? 0 }}
+        );
+    @endforeach
     
     // Cancel order function
     function cancelOrder(id) {

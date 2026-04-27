@@ -391,6 +391,29 @@ document.addEventListener('change', function(e) {
                 }
 
                 row.querySelector('.mrp').value = data.mrp ?? 0;
+                let saleTypeSelect = row.querySelector('.saleType');
+
+if ((data.loose_stock ?? 0) > 0 && (data.stock ?? 0) <= 0) {
+
+    // sirf loose stock available
+
+    saleTypeSelect.innerHTML = `
+        <option value="loose" selected>Loose Tablet</option>
+    `;
+
+    saleTypeSelect.value = 'loose';
+
+} else {
+
+    // strip available
+
+    saleTypeSelect.innerHTML = `
+        <option value="strip" selected>Full Strip</option>
+        <option value="loose">Loose Tablet</option>
+    `;
+
+    saleTypeSelect.value = 'strip';
+}
 row.querySelector('.price').value = data.mrp ?? 0;                // Trigger calculation after setting price
                 triggerCalculation(row);
             })

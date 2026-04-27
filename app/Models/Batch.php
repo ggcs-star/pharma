@@ -157,11 +157,13 @@ class Batch extends Model
     {
         return now()->diffInDays($this->expiry_date, false) <= $days;
     }
-
-    public function isAvailable()
-    {
-        return $this->stock > 0 && !$this->isExpired();
-    }
+public function isAvailable()
+{
+    return (
+        ($this->stock > 0 || $this->loose_stock > 0)
+        && !$this->isExpired()
+    );
+}
 
     public function isLowStock($limit = 10)
     {
@@ -174,12 +176,16 @@ class Batch extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function scopeAvailable($query)
-    {
-        return $query->where('stock', '>', 0)
-                     ->whereDate('expiry_date', '>=', now())
-                     ->orderBy('expiry_date', 'asc');
-    }
+   public function scopeAvailable($query)
+{
+    return $query
+        ->where(function ($q) {
+            $q->where('stock', '>', 0)
+              ->orWhere('loose_stock', '>', 0);
+        })
+        ->whereDate('expiry_date', '>=', now())
+        ->orderBy('expiry_date', 'asc');
+}
 
     /*
     |--------------------------------------------------------------------------

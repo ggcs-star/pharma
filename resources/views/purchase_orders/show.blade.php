@@ -210,8 +210,23 @@ $expiryDate = ($batch && $batch->expiry_date)
                                 <td class="text-center">{{ $expiryDate }}</td>
                                 <td class="text-end">{{ number_format($item->quantity, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->free_quantity ?? 0, 2) }}</td>
-                                <td class="text-end">₹{{ number_format(optional($item->catalog)->base_price ?? 0, 2) }}</td>
-                                <td class="text-end">₹{{ number_format($item->rate, 2) }}</td>
+                            <td class="text-end">
+    ₹{{ number_format(
+        $item->final_mrp
+        ?? optional($item->catalog)->base_price
+        ?? 0,
+        2
+    ) }}
+</td>
+
+<td class="text-end">
+    ₹{{ number_format(
+        optional($item->catalog)->retailer_price
+        ?? $item->rate
+        ?? 0,
+        2
+    ) }}
+</td>
                                 <td class="text-center">{{ number_format($item->gst_percent, 2) }}%</td>
                                 <td class="text-end fw-semibold">₹{{ number_format($amount, 2) }}</td>
                             </tr>

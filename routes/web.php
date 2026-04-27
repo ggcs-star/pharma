@@ -167,9 +167,41 @@ Route::get('/api/item-details/{id}', function ($id) {
         return response()->json([]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Get nearest valid batch first (FIFO)
+    |--------------------------------------------------------------------------
+    */
+
+    $batch = \App\Models\Batch::where('item_id', $id)
+        ->whereDate('expiry_date', '>=', now())
+        ->orderBy('expiry_date', 'asc')
+        ->first();
+
+    $gstPercent = 0;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Direct batch relation check
+    |--------------------------------------------------------------------------
+    */
+
+    if ($batch) {
+
+        // IMPORTANT:
+        // your DB uses batch_id in purchase_items
+
+        $purchaseItem = \App\Models\PurchaseItem::where('batch_id', $batch->id)
+            ->first();
+
+        if ($purchaseItem) {
+            $gstPercent = $purchaseItem->gst_percent ?? 0;
+        }
+    }
+
     return response()->json([
         'pack_type' => $item->packType->name ?? '',
-        'gst' => $item->gst_percent,
+        'gst' => $gstPercent,
         'unit' => $item->unit,
         'hsn' => $item->hsn_code,
         'conversion_factor' => $item->conversion_factor ?? 1,
@@ -178,8 +210,17 @@ Route::get('/api/item-details/{id}', function ($id) {
 Route::get('/api/get-item-full/{id}', function ($id) {
 
     $batch = \App\Models\Batch::where('item_id', $id)
-        ->where('stock', '>', 0)
         ->whereDate('expiry_date', '>=', now())
+        ->where(function ($q) {
+            $q->where('stock', '>', 0)
+              ->orWhere('loose_stock', '>', 0);
+        })
+        ->orderByRaw("
+            CASE 
+                WHEN loose_stock > 0 AND stock <= 0 THEN 0
+                ELSE 1
+            END
+        ")
         ->orderBy('expiry_date', 'asc')
         ->first();
 
@@ -188,15 +229,18 @@ Route::get('/api/get-item-full/{id}', function ($id) {
     }
 
     return response()->json([
-        'batch_id' => $batch->id, // 🔥 MOST IMPORTANT
-
+        'batch_id' => $batch->id,
         'batch' => $batch->batch_code,
         'expiry' => $batch->expiry_date,
         'mrp' => $batch->mrp,
-        'sale_price' => $batch->selling_price
+        'sale_price' => $batch->selling_price,
+        'conversion_factor' => $batch->number_of_units ?? 10,
+
+        // IMPORTANT
+        'stock' => $batch->stock,
+        'loose_stock' => $batch->loose_stock,
     ]);
 });
-
 Route::get('/api/get-item-stock/{id}', function ($id) {
 
     $stock = Batch::where('item_id', $id)->sum('stock');

@@ -92,6 +92,33 @@
                                     <tr><td colspan="7" class="text-center text-muted py-4">No items added yet. Click on products below to add.</td></tr>
                                 </tbody>
                             </table>
+                            <div class="mt-4 text-end">
+    <div class="p-3 rounded-4 border bg-light d-inline-block"
+         style="min-width:320px;">
+
+        <div class="d-flex justify-content-between mb-2">
+            <strong>Sub Total:</strong>
+            <span id="subTotalValue">₹0.00</span>
+        </div>
+
+        <div class="d-flex justify-content-between mb-2">
+            <strong>Total GST:</strong>
+            <span id="gstTotalValue">₹0.00</span>
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-between">
+            <strong class="fs-5 text-success">
+                Grand Total:
+            </strong>
+            <strong class="fs-5 text-success"
+                    id="grandTotalValue">
+                ₹0.00
+            </strong>
+        </div>
+    </div>
+</div>
                         </div>
                         
                         <!-- All Items from this supplier (catalog) -->
@@ -311,18 +338,30 @@
         box-shadow: 0 10px 20px rgba(25, 135, 84, 0.35);
         color: white;
     }
-    .remove-row-btn {
-        background: transparent;
-        border: none;
-        color: #94a3b8;
-        width: 36px;
-        height: 36px;
-        border-radius: 14px;
-    }
-    .remove-row-btn:hover {
-        background: #fee2e2;
-        color: #dc2626;
-    }
+   .remove-row-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    border: none;
+    background: #fff1f2;
+    color: #dc2626;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: all 0.2s ease;
+}
+
+.remove-row-btn:hover {
+    background: #dc2626;
+    color: #ffffff;
+    transform: scale(1.08);
+    box-shadow: 0 8px 20px rgba(220, 38, 38, 0.18);
+}
     .loader-spinner {
         display: inline-block;
         width: 1.5rem;
@@ -365,6 +404,8 @@
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+
+
     function formatExpiry(dateStr) {
     if (!dateStr) return 'N/A';
 
@@ -394,6 +435,27 @@
     let supplierCatalogItems = [];
     let orderItems = [];
     let rowIdCounter = 0;
+       
+function updateFinalTotals() {
+    let subtotal = 0;
+    let gstTotal = 0;
+    let grandTotal = 0;
+
+    orderItems.forEach(item => {
+        subtotal += parseFloat(item.subtotal || 0);
+        gstTotal += parseFloat(item.gst_amount || 0);
+        grandTotal += parseFloat(item.total || 0);
+    });
+
+    document.getElementById('subTotalValue').innerText =
+        `₹${subtotal.toFixed(2)}`;
+
+    document.getElementById('gstTotalValue').innerText =
+        `₹${gstTotal.toFixed(2)}`;
+
+    document.getElementById('grandTotalValue').innerText =
+        `₹${grandTotal.toFixed(2)}`;
+}
     
     function getImageUrl(data) {
         const item = data?.item || data;
@@ -415,8 +477,8 @@
     function findBestPriceSupplier(suppliers) {
         if (!suppliers || suppliers.length === 0) return null;
         return suppliers.reduce((best, current) => {
-            const currPrice = current.purchase_price || current.retailer_price || Infinity;
-            const bestPrice = best.purchase_price || best.retailer_price || Infinity;
+         const currPrice = current.retailer_price || current.purchase_price || Infinity;
+const bestPrice = best.retailer_price || best.purchase_price || Infinity;
             return currPrice < bestPrice ? current : best;
         }, suppliers[0]);
     }
@@ -440,8 +502,9 @@ suppliers.forEach((sup, index) => {            const isBest = bestId === sup.id;
                                 <i class="bi bi-building"></i> ${escapeHtml(sup.supplier?.name || 'Supplier')}
                             </div>
                             <div class="d-flex flex-wrap gap-2">
-                                <span class="price-chip">💰 PTR: ₹${sup.purchase_price || sup.retailer_price || 0}</span>
-                                <span class="price-chip">🏷️ MRP: ₹${sup.base_price || sup.mrp || 0}</span>
+<span class="price-chip">
+    💰 PTR: ₹${sup.retailer_price || sup.purchase_price || 0}
+</span>                                <span class="price-chip">🏷️ MRP: ₹${sup.base_price || sup.mrp || 0}</span>
 <span class="price-chip">⏳ Exp: ${formatExpiry(sup.expiry_date)}</span>
                             </div>
                         </div>
@@ -538,8 +601,9 @@ supplierCatalogItems.forEach((item, index) => {            const imgUrl = getIma
     ${item.item?.number_of_units || 1} 
     ${item.item?.unit || 'Unit'}
 </div>
-                        <div class="text-success fw-bold mt-1">₹${item.purchase_price || 0}</div>
-<div class="d-flex justify-content-between mt-1">
+<div class="text-success fw-bold mt-1">
+    ₹${item.retailer_price || item.purchase_price || 0}
+</div><div class="d-flex justify-content-between mt-1">
     <span class="small ${(item.current_stock ?? item.real_stock ?? 0) < 10 ? 'text-danger fw-bold' : 'text-muted'}">
 📦 ${item.current_stock ?? item.real_stock ?? 0}    </span>
     <span class="small text-danger">
@@ -574,47 +638,114 @@ const itemData = supplierCatalogItems[index];          const addItem = () => add
         });
     }
     
-    function addItemToOrder(catalogItem) {
-      const newItem = {
-    rowId: rowIdCounter++,
-    catalog_id: catalogItem.id,
-    item_id: catalogItem.item_id,
-    name: catalogItem.item?.name || 'Medicine',
-    pack_type: catalogItem.item?.pack_type || '',
-unit: catalogItem.item?.unit || '',
-number_of_units: catalogItem.item?.number_of_units || 1,
-    rate: catalogItem.purchase_price || 0,
-    mrp: catalogItem.base_price || catalogItem.mrp || 0,
-    gst: catalogItem.gst_percent || 0,
+ function addItemToOrder(catalogItem) {
 
-    // 🔥 ADD THIS
-    stock: catalogItem.current_stock ?? catalogItem.real_stock ?? 0,
+    /*
+    |--------------------------------------------------------------------------
+    | Duplicate check by item_id
+    |--------------------------------------------------------------------------
+    | Same medicine again = quantity increase
+    | NOT new row
+    |--------------------------------------------------------------------------
+    */
 
-    quantity: 1,
-    total: (catalogItem.purchase_price || 0) * 1
-};
-        orderItems.push(newItem);
+    const existingIndex = orderItems.findIndex(
+        x => String(x.item_id) === String(catalogItem.item_id)
+    );
+
+    if (existingIndex !== -1) {
+
+        orderItems[existingIndex].quantity += 1;
+
+        const qty = orderItems[existingIndex].quantity;
+        const rate = parseFloat(orderItems[existingIndex].rate || 0);
+        const gst = parseFloat(orderItems[existingIndex].gst || 0);
+
+        const subtotal = rate * qty;
+        const gstAmount = (subtotal * gst) / 100;
+        const finalTotal = subtotal + gstAmount;
+
+        orderItems[existingIndex].subtotal = subtotal;
+        orderItems[existingIndex].gst_amount = gstAmount;
+        orderItems[existingIndex].total = finalTotal;
+
         renderOrderItemsTable();
-        
+
         Swal.fire({
             icon: 'success',
-            title: 'Added!',
-            text: `${newItem.name} added to order`,
-            timer: 800,
+            title: 'Quantity Updated',
+            text: 'Same item already exists, quantity increased',
+            timer: 1000,
             showConfirmButton: false,
             toast: true,
             position: 'top-end'
         });
+
+        return;
     }
-    
+
+    /*
+    |--------------------------------------------------------------------------
+    | New item create
+    |--------------------------------------------------------------------------
+    */
+
+    const ptr = parseFloat(
+        catalogItem.retailer_price ||
+        catalogItem.purchase_price ||
+        0
+    );
+
+    const gst = parseFloat(
+        catalogItem.gst_percent || 0
+    );
+
+    const qty = 1;
+
+    const subtotal = ptr * qty;
+    const gstAmount = (subtotal * gst) / 100;
+    const finalTotal = subtotal + gstAmount;
+
+    const newItem = {
+        rowId: rowIdCounter++,
+        catalog_id: catalogItem.id,
+        item_id: catalogItem.item_id,
+        name: catalogItem.item?.name || 'Medicine',
+        pack_type: catalogItem.item?.pack_type || '',
+        unit: catalogItem.item?.unit || '',
+        number_of_units: catalogItem.item?.number_of_units || 1,
+
+        rate: ptr,
+        mrp: catalogItem.base_price || catalogItem.mrp || 0,
+        gst: gst,
+        stock: catalogItem.current_stock ?? catalogItem.real_stock ?? 0,
+
+        quantity: qty,
+        subtotal: subtotal,
+        gst_amount: gstAmount,
+        total: finalTotal
+    };
+
+    orderItems.push(newItem);
+
+    renderOrderItemsTable();
+}   
     function renderOrderItemsTable() {
         const tbody = document.getElementById('orderItemsBody');
         if (!tbody) return;
         
-        if (orderItems.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No items added. Click on products above to add.</td></tr>';
-            return;
-        }
+   if (orderItems.length === 0) {
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+                No items added. Click on products above to add.
+            </td>
+        </tr>
+    `;
+
+    updateFinalTotals();
+    return;
+}
         
         let html = '';
         orderItems.forEach((item, idx) => {
@@ -659,9 +790,16 @@ number_of_units: catalogItem.item?.number_of_units || 1,
                     <td>
                         <input type="text" class="form-control total-field total-amount" value="${item.total.toFixed(2)}" readonly>
                     </td>
-                    <td class="text-center">
-                        <button type="button" class="btn remove-row-btn" data-rowidx="${idx}"><i class="bi bi-trash3"></i></button>
-                    </td>
+             <td class="text-center">
+    <button
+        type="button"
+        class="remove-row-btn"
+        data-rowidx="${idx}"
+        title="Remove Item"
+    >
+        🗑
+    </button>
+</td>
                 </tr>
             `;
         });
@@ -687,10 +825,18 @@ if (newQty < 1) {
     newQty = 1;
     this.value = 1;
 }                if (orderItems[rowIdx]) {
-                    orderItems[rowIdx].quantity = newQty;
-                    orderItems[rowIdx].total = orderItems[rowIdx].rate * newQty;
-                    renderOrderItemsTable();
-                }
+             orderItems[rowIdx].quantity = newQty;
+
+const subtotal = orderItems[rowIdx].rate * newQty;
+const gstAmount = (subtotal * orderItems[rowIdx].gst) / 100;
+const finalTotal = subtotal + gstAmount;
+
+orderItems[rowIdx].subtotal = subtotal;
+orderItems[rowIdx].gst_amount = gstAmount;
+orderItems[rowIdx].total = finalTotal;
+
+renderOrderItemsTable();
+}
             });
         });
         
@@ -701,6 +847,7 @@ if (newQty < 1) {
                 renderOrderItemsTable();
             });
         });
+        updateFinalTotals();
     }
     
     function changeSupplier() {
