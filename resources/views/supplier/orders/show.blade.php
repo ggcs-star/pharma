@@ -161,7 +161,7 @@
                             <th class="py-3 text-end">Purchase Price</th>
                             <th class="py-3 text-end">Retailer Price</th>
                             <th class="py-3 text-end">MRP</th>
-                            <th class="py-3 text-end">Order Rate</th>
+                            <th class="py-3 text-end">Base Price</th>
                             <th class="py-3 text-center">Qty</th>
                             <th class="py-3 text-center">GST</th>
                             <th class="py-3 text-end pe-4">Total</th>
@@ -196,8 +196,9 @@
                             <td class="text-end">₹{{ number_format(optional($row->catalog)->purchase_price ?? 0, 2) }}</td>
                             <td class="text-end">₹{{ number_format(optional($row->catalog)->retailer_price ?? 0, 2) }}</td>
                             <td class="text-end">₹{{ number_format(optional($row->catalog)->retailer_mrp ?? 0, 2) }}</td>
-                            <td class="text-end fw-semibold">₹{{ number_format($row->rate ?? 0, 2) }}</td>
-                            <td class="text-center">
+<td class="text-end fw-semibold">
+    ₹{{ number_format(optional($row->catalog)->base_price ?? 0, 2) }}
+</td>                            <td class="text-center">
                                 <span class="fw-bold">{{ $row->quantity ?? 0 }}</span>
                             </td>
                             <td class="text-center">{{ $row->gst_percent ?? 0 }}%</td>

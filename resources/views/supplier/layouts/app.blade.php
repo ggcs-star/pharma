@@ -105,7 +105,7 @@
             {{ auth('supplier')->user()->name ?? 'Supplier' }}
         </span>
 
-        <form method="POST" action="{{ route('supplier.logout') }}" class="m-0">
+        <form method="POST" action="{{ route('logout') }}" class="m-0">
             @csrf
             <button class="logout-btn">
                 <i class="fa fa-sign-out-alt me-1"></i> Logout

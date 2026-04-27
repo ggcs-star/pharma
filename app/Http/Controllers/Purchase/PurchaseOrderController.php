@@ -22,9 +22,13 @@ class PurchaseOrderController extends Controller
     |--------------------------------------------------------------------------
     */
     public function index(Request $request)
-    {
-$query = PurchaseOrder::with(['supplier','retailer'])
-    ->withCount('items'); // 🔥 correct chaining
+    {$query = PurchaseOrder::with([
+    'supplier',
+    'retailer',
+    'items',
+    'items.item',
+    'items.supplierItemCatalog'
+])->withCount('items');// 🔥 correct chaining
         if ($request->from_date && $request->to_date) {
             $query->whereBetween('order_date', [
                 $request->from_date,
@@ -490,19 +494,20 @@ public function receiveStock($id)
 public function updateMrp(Request $request, $id)
 {
     $request->validate([
-        'final_mrp' => 'required|numeric|min:0',
+        'items' => 'required|array|min:1',
 
         /*
         |--------------------------------------------------------------------------
-        | NEW → strip size / loose conversion
-        |--------------------------------------------------------------------------
-        | Example:
-        | 1 strip = 10 tablets
-        | 1 strip = 9 tablets
-        | 1 strip = 15 tablets
+        | Every selected item must have:
+        | item_id
+        | final_mrp
+        | conversion_factor
         |--------------------------------------------------------------------------
         */
-        'conversion_factor' => 'required|numeric|min:1',
+
+        'items.*.item_id' => 'required|exists:items,id',
+        'items.*.final_mrp' => 'required|numeric|min:0',
+        'items.*.conversion_factor' => 'required|numeric|min:1',
     ]);
 
     DB::beginTransaction();
@@ -526,39 +531,74 @@ public function updateMrp(Request $request, $id)
 
         /*
         |--------------------------------------------------------------------------
-        | STEP 2 → UPDATE PO MRP
+        | STEP 2 → ITEM-WISE MRP UPDATE
+        |--------------------------------------------------------------------------
+        | OLD WRONG:
+        | $order->final_mrp = single value
+        |
+        | NEW CORRECT:
+        | Each item gets separate final_mrp
         |--------------------------------------------------------------------------
         */
 
-        $order->final_mrp = $request->final_mrp;
-        $order->price_updated = true;
-        $order->save();
+        foreach ($request->items as $row) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | STEP 3 → UPDATE ALL ITEMS conversion_factor
-        |--------------------------------------------------------------------------
-        | So no manual DB update needed
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | Safety check
+            |--------------------------------------------------------------------------
+            */
 
-        foreach ($order->items as $poItem) {
-
-            if (!$poItem->item_id) {
+            if (empty($row['item_id'])) {
                 continue;
             }
 
-            \App\Models\Item::where('id', $poItem->item_id)
-                ->update([
-                    'conversion_factor' => $request->conversion_factor
-                ]);
+            /*
+            |--------------------------------------------------------------------------
+            | STEP 2A → Update PO Item final_mrp
+            |--------------------------------------------------------------------------
+            */
+
+            PurchaseOrderItem::where([
+                'purchase_order_id' => $order->id,
+                'item_id' => $row['item_id'],
+            ])->update([
+                'final_mrp' => $row['final_mrp'],
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | STEP 2B → Update Item conversion_factor
+            |--------------------------------------------------------------------------
+            | Example:
+            | Crocin → 1 strip = 10 tablets
+            | Dolo   → 1 strip = 15 tablets
+            |--------------------------------------------------------------------------
+            */
+
+            \App\Models\Item::where(
+                'id',
+                $row['item_id']
+            )->update([
+                'conversion_factor' => $row['conversion_factor']
+            ]);
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 3 → MARK PO AS PRICE UPDATED
+        |--------------------------------------------------------------------------
+        */
+
+        $order->update([
+            'price_updated' => true
+        ]);
 
         DB::commit();
 
         return back()->with(
             'success',
-            'MRP + Conversion Factor Updated Successfully'
+            'Item-wise MRP + Conversion Factor Updated Successfully'
         );
 
     } catch (\Exception $e) {
@@ -664,31 +704,45 @@ public function publishSale($id)
                 );
             }
 
-            $qty  = (float) ($poItem->quantity ?? 0); // strips
-            $rate = (float) ($poItem->rate ?? 0);
+           $qty = (float) ($poItem->quantity ?? 0);
 
-            if ($qty <= 0) {
-                throw new \Exception(
-                    'Invalid quantity for Item ID: ' . $poItem->item_id
-                );
-            }
+/*
+|--------------------------------------------------------------------------
+| PTR Logic
+|--------------------------------------------------------------------------
+| Use retailer price (actual retailer buying price)
+| NOT supplier internal purchase price
+|--------------------------------------------------------------------------
+*/
 
-            /*
-            |--------------------------------------------------------------------------
-            | STEP 5 → SAFE MRP LOGIC
-            |--------------------------------------------------------------------------
-            */
+$rate = (float) (
+    $catalog->retailer_price
+    ?? $poItem->rate
+    ?? 0
+);
 
-            $mrp = (float) (
-                $poItem->final_mrp
-                ?? $order->final_mrp
-                ?? $catalog->base_price
-                ?? 0
-            );
+if ($rate <= 0) {
+    $rate = 0;
+}
 
-            if ($mrp <= 0) {
-                $mrp = $rate;
-            }
+/*
+|--------------------------------------------------------------------------
+| MRP Logic
+|--------------------------------------------------------------------------
+| Use retailer entered final MRP
+| fallback → supplier MRP only if final_mrp missing
+|--------------------------------------------------------------------------
+*/
+
+$mrp = (float) (
+    $poItem->final_mrp
+    ?? $catalog->base_price
+    ?? 0
+);
+
+if ($mrp <= 0) {
+    $mrp = $rate;
+}
 
             $gstPercent = (float) ($poItem->gst_percent ?? 0);
             $discount   = (float) ($poItem->discount_amount ?? 0);

@@ -145,7 +145,7 @@
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2">
-                                            {{ number_format($batch->total_sold) }}
+                                            {{ number_format($batch->total_sale) }}
                                         </span>
                                     </td>
                                     <td class="text-center">
@@ -263,59 +263,108 @@
                     </div>
 
                     {{-- Sales History Tab --}}
-                    <div class="tab-pane fade" id="sales" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-4">Date</th>
-                                        <th>Order ID</th>
-                                        <th>Batch Code</th>
-                                        <th class="text-center pe-4">Quantity</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($sales as $sale)
-                                        <tr>
-                                            <td class="ps-4">
-                                                <div class="fw-medium">
-                                                    {{ \Carbon\Carbon::parse($sale->created_at)->format('d M Y') }}
-                                                </div>
-                                                <small class="text-muted">
-                                                    {{ \Carbon\Carbon::parse($sale->created_at)->format('h:i A') }}
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <a href="#" class="text-decoration-none">
-                                                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
-                                                        #{{ $sale->order_id }}
-                                                    </span>
-                                                </a>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary bg-opacity-10 text-secondary">
-                                                    {{ $sale->batch_code }}
-                                                </span>
-                                            </td>
-                                            <td class="text-center pe-4">
-                                                <span class="fw-medium">{{ number_format($sale->qty) }}</span>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="4" class="text-center py-5 text-muted">
-                                                <i class="bi bi-bag-x display-4 d-block mb-2"></i>
-                                                No sales history found
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                  <div class="tab-pane fade" id="sales" role="tabpanel">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Date</th>
+                    <th>Bill</th>
+                    <th>Customer Details</th>
+                    <th>Batch</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-center">Amount</th>
+                    <th class="text-center">Payment</th>
+                    <th class="text-center pe-4">Status</th>
+                </tr>
+            </thead>
 
+            <tbody>
+                @forelse($sales as $sale)
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-medium">
+                                {{ \Carbon\Carbon::parse($sale->created_at)->format('d M Y') }}
+                            </div>
+                            <small class="text-muted">
+                                {{ \Carbon\Carbon::parse($sale->created_at)->format('h:i A') }}
+                            </small>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
+                                {{ $sale->bill_number ?? ('#' . $sale->order_id) }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <div class="fw-semibold">
+                                {{ $sale->customer_name ?? 'Walk-in Customer' }}
+                            </div>
+
+                            @if($sale->customer_mobile)
+                                <small class="d-block text-muted">
+                                    {{ $sale->customer_mobile }}
+                                </small>
+                            @endif
+
+                            @if($sale->customer_email)
+                                <small class="d-block text-muted">
+                                    {{ $sale->customer_email }}
+                                </small>
+                            @endif
+
+                            @if($sale->customer_address)
+                                <small class="d-block text-muted">
+                                    {{ $sale->customer_address }}
+                                </small>
+                            @endif
+
+                            @if($sale->doctor_name)
+                                <small class="d-block text-info">
+                                    Doctor: {{ $sale->doctor_name }}
+                                </small>
+                            @endif
+                        </td>
+
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                                {{ $sale->batch_code }}
+                            </span>
+                        </td>
+
+                        <td class="text-center">
+                            <strong>{{ number_format($sale->qty) }}</strong>
+                        </td>
+
+                        <td class="text-center">
+                            ₹{{ number_format($sale->net_amount ?? 0, 2) }}
+                        </td>
+
+                        <td class="text-center">
+                            <span class="badge bg-info bg-opacity-10 text-info px-3 py-2">
+                                {{ ucfirst($sale->payment_type ?? 'Cash') }}
+                            </span>
+                        </td>
+
+                        <td class="text-center pe-4">
+                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">
+                                {{ ucfirst($sale->status ?? 'Completed') }}
+                            </span>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-bag-x display-4 d-block mb-2"></i>
+                            No sales history found
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
             {{-- Footer with Actions --}}
             <div class="card-footer bg-white py-3">
                 <div class="d-flex justify-content-between align-items-center">

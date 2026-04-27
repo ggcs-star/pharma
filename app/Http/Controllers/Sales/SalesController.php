@@ -42,10 +42,22 @@ class SalesController extends Controller
     // =========================
     public function create()
     {
-        $items = Item::whereHas('batches', function ($q) {
-            $q->where('stock', '>', 0)
-              ->whereDate('expiry_date', '>=', now());
-        })->get();
+      $items = Item::with(['batches' => function ($q) {
+        $q->where(function ($query) {
+                $query->where('stock', '>', 0)
+                      ->orWhere('loose_stock', '>', 0);
+            })
+          ->whereDate('expiry_date', '>=', now());
+    }])
+    ->whereHas('batches', function ($q) {
+        $q->where(function ($query) {
+                $query->where('stock', '>', 0)
+                      ->orWhere('loose_stock', '>', 0);
+            })
+          ->whereDate('expiry_date', '>=', now());
+    })
+    ->orderBy('name')
+    ->get();
 
         $customers = Customer::orderBy('name')->get();
         $doctors   = Doctor::orderBy('name')->get();
@@ -67,6 +79,241 @@ public function getItemDetails($id)
     // =========================
     // STORE SALE
     // =========================
+// public function store(Request $request)
+// {
+//     $validated = $request->validate([
+//         'bill_date' => 'required|date',
+//         'customer_id' => 'nullable|exists:customers,id',
+//         'doctor_id' => 'nullable|exists:doctors,id',
+//         'payment_type' => 'required',
+//         'items' => 'required|array|min:1',
+
+//         'items.*.item_id' => 'required|exists:items,id',
+//         'items.*.batch_id' => 'required|exists:batches,id',
+//         'items.*.qty' => 'required|numeric|min:1',
+//         'items.*.sale_type' => 'required|in:strip,loose',
+//         'items.*.selling_price' => 'required|numeric|min:0',
+//     ]);
+
+//     DB::beginTransaction();
+
+//     try {
+
+//         // 🔥 AUTO BILL NUMBER
+//         $billNumber = $this->generateBillNumber();
+
+//         $subtotal = 0;
+//         $totalGST = 0;
+//         $grandTotal = 0;
+
+//         // =========================
+//         // CREATE SALE
+//         // =========================
+//         $sale = Sale::create([
+//             'bill_number' => $billNumber,
+//             'bill_date' => $validated['bill_date'],
+//             'customer_id' => $validated['customer_id'] ?? null,
+//             'doctor_id' => $validated['doctor_id'] ?? null,
+//             'payment_type' => $validated['payment_type'],
+//             'entry_by' => Auth::id(),
+//             'status' => 'completed'
+//         ]);
+
+//         $itemsData = [];
+
+//         foreach ($validated['items'] as $row) {
+
+//             $item = Item::findOrFail($row['item_id']);
+//             $batch = Batch::with('item')->findOrFail($row['batch_id']);
+
+//             $qty = $row['qty'];
+//             $saleType = $row['sale_type'];
+
+//             $conversionFactor = $item->conversion_factor ?? 1;
+
+//             /*
+//             ========================================
+//             STRIP SALE
+//             ========================================
+//             */
+
+//             if ($saleType === 'strip') {
+
+//                 if ($batch->stock < $qty) {
+//                     throw new \Exception("Stock not available for {$item->name}");
+//                 }
+
+//                 $base = $qty * $row['selling_price'];
+
+//                 // strip stock reduce
+//                 $batch->reduceStock($qty);
+
+//                 $movementUnit = 'Strip';
+//                 $unitQty = $qty;
+//             }
+
+//             /*
+//             ========================================
+//             LOOSE TABLET SALE
+//             ========================================
+//             */
+
+//             else {
+
+//                 if ($batch->loose_stock < $qty) {
+//                     throw new \Exception("Loose stock not available for {$item->name}");
+//                 }
+
+//                 // Per Tablet Price = Strip Price / Conversion Factor
+//                 $perTabletPrice = $row['selling_price'] / $conversionFactor;
+
+//                 $base = $perTabletPrice * $qty;
+
+//                 // loose stock reduce
+//                 $batch->reduceLooseStock($qty);
+
+//                 $movementUnit = 'Tablet';
+//                 $unitQty = $qty;
+//             }
+
+//             /*
+//             ========================================
+//             GST CALCULATION
+//             ========================================
+//             */
+
+//             $gstPercent = $item->gst_percent ?? 0;
+//             $gstAmount = ($base * $gstPercent) / 100;
+
+//             $final = $base + $gstAmount;
+
+//             /*
+//             ========================================
+//             SALES ITEM SAVE
+//             ========================================
+//             */
+
+//             $itemsData[] = [
+//                 'sale_id' => $sale->id,
+//                 'item_id' => $item->id,
+//                 'batch_id' => $batch->id,
+
+//                 // strip equivalent qty
+//                 'quantity' => $saleType === 'strip'
+//                     ? $qty
+//                     : ($qty / $conversionFactor),
+
+//                 'sale_type' => $saleType,
+//                 'unit_qty' => $unitQty,
+
+//                 'selling_price' => $row['selling_price'],
+//                 'mrp' => $batch->mrp,
+//                 'discount' => 0,
+
+//                 'gst' => $gstPercent,
+//                 'gst_amount' => $gstAmount,
+//                 'amount' => $final,
+
+//                 'created_at' => now(),
+//                 'updated_at' => now()
+//             ];
+
+//             /*
+//             ========================================
+//             STOCK MOVEMENT
+//             ========================================
+//             */
+
+//             StockMovement::create([
+//                 'item_id' => $item->id,
+//                 'batch_id' => $batch->id,
+
+//                 'type' => 'sale',
+//                 'sale_type' => $saleType,
+//                 'movement_unit' => $movementUnit,
+
+//                 'quantity' => -$unitQty,
+
+//                 'running_stock' => $saleType === 'strip'
+//                     ? $batch->fresh()->stock
+//                     : $batch->fresh()->loose_stock,
+
+//                 'reference_id' => $sale->id,
+//                 'reference_type' => Sale::class,
+
+//                 'user_id' => Auth::id(),
+//                 'remarks' => 'Sale #' . $billNumber,
+//             ]);
+
+//             $subtotal += $base;
+//             $totalGST += $gstAmount;
+//             $grandTotal += $final;
+//         }
+
+//         /*
+//         ========================================
+//         SAVE SALES ITEMS
+//         ========================================
+//         */
+
+//         SalesItem::insert($itemsData);
+
+//         /*
+//         ========================================
+//         UPDATE SALE TOTALS
+//         ========================================
+//         */
+
+//         $sale->update([
+//             'total_amount' => $subtotal,
+//             'gst' => $totalGST,
+//             'net_amount' => $grandTotal
+//         ]);
+
+//         /*
+//         ========================================
+//         CUSTOMER LEDGER
+//         ========================================
+//         */
+
+//         if (
+//             $validated['payment_type'] == 'credit' &&
+//             !empty($validated['customer_id'])
+//         ) {
+
+//             $lastBalance = CustomerLedger::where(
+//                 'customer_id',
+//                 $validated['customer_id']
+//             )->latest()->value('balance') ?? 0;
+
+//             $newBalance = $lastBalance + $grandTotal;
+
+//             CustomerLedger::create([
+//                 'customer_id' => $validated['customer_id'],
+//                 'reference_id' => $sale->id,
+//                 'type' => 'sale',
+//                 'debit' => $grandTotal,
+//                 'credit' => 0,
+//                 'balance' => $newBalance,
+//                 'transaction_date' => now(),
+//                 'description' => 'Sale #' . $sale->bill_number,
+//                 'created_by' => Auth::id(),
+//             ]);
+//         }
+
+//         DB::commit();
+
+//         return redirect()
+//             ->route('sales.index')
+//             ->with('success', 'Sale Saved Successfully');
+
+//     } catch (\Exception $e) {
+
+//         DB::rollBack();
+
+//         return back()->with('error', $e->getMessage());
+//     }
+// }
 public function store(Request $request)
 {
     $validated = $request->validate([
@@ -87,53 +334,80 @@ public function store(Request $request)
 
     try {
 
-        // 🔥 AUTO BILL NUMBER
+        /*
+        |--------------------------------------------------------------------------
+        | AUTO BILL NUMBER
+        |--------------------------------------------------------------------------
+        */
+
         $billNumber = $this->generateBillNumber();
 
         $subtotal = 0;
         $totalGST = 0;
         $grandTotal = 0;
 
-        // =========================
-        // CREATE SALE
-        // =========================
+        /*
+        |--------------------------------------------------------------------------
+        | CREATE SALE MASTER
+        |--------------------------------------------------------------------------
+        */
+
         $sale = Sale::create([
-            'bill_number' => $billNumber,
-            'bill_date' => $validated['bill_date'],
-            'customer_id' => $validated['customer_id'] ?? null,
-            'doctor_id' => $validated['doctor_id'] ?? null,
-            'payment_type' => $validated['payment_type'],
-            'entry_by' => Auth::id(),
-            'status' => 'completed'
+            'bill_number'   => $billNumber,
+            'bill_date'     => $validated['bill_date'],
+            'customer_id'   => $validated['customer_id'] ?? null,
+            'doctor_id'     => $validated['doctor_id'] ?? null,
+            'payment_type'  => $validated['payment_type'],
+            'entry_by'      => Auth::id(),
+            'status'        => 'completed',
         ]);
 
         $itemsData = [];
+
+        /*
+        |--------------------------------------------------------------------------
+        | LOOP ALL ITEMS
+        |--------------------------------------------------------------------------
+        */
 
         foreach ($validated['items'] as $row) {
 
             $item = Item::findOrFail($row['item_id']);
             $batch = Batch::with('item')->findOrFail($row['batch_id']);
 
-            $qty = $row['qty'];
+            $qty = (float) $row['qty'];
             $saleType = $row['sale_type'];
 
             $conversionFactor = $item->conversion_factor ?? 1;
 
+            $base = 0;
+            $movementUnit = '';
+            $unitQty = 0;
+
             /*
-            ========================================
-            STRIP SALE
-            ========================================
+            |--------------------------------------------------------------------------
+            | STRIP SALE
+            |--------------------------------------------------------------------------
             */
 
             if ($saleType === 'strip') {
 
                 if ($batch->stock < $qty) {
-                    throw new \Exception("Stock not available for {$item->name}");
+                    throw new \Exception(
+                        "Stock not available for {$item->name}"
+                    );
                 }
+
+                /*
+                | selling_price = per strip price
+                */
 
                 $base = $qty * $row['selling_price'];
 
-                // strip stock reduce
+                /*
+                | Reduce strip stock
+                */
+
                 $batch->reduceStock($qty);
 
                 $movementUnit = 'Strip';
@@ -141,44 +415,72 @@ public function store(Request $request)
             }
 
             /*
-            ========================================
-            LOOSE TABLET SALE
-            ========================================
+            |--------------------------------------------------------------------------
+            | LOOSE TABLET SALE
+            |--------------------------------------------------------------------------
             */
 
             else {
 
                 if ($batch->loose_stock < $qty) {
-                    throw new \Exception("Loose stock not available for {$item->name}");
+                    throw new \Exception(
+                        "Loose stock not available for {$item->name}"
+                    );
                 }
 
-                // Per Tablet Price = Strip Price / Conversion Factor
-                $perTabletPrice = $row['selling_price'] / $conversionFactor;
+                /*
+                |--------------------------------------------------------------------------
+                | IMPORTANT FIX
+                |--------------------------------------------------------------------------
+                | Frontend already sends per-tablet price
+                | Example:
+                | strip price = 44
+                | 1 strip = 10 tablets
+                | frontend sends = 4.40
+                |
+                | so DO NOT divide again
+                |--------------------------------------------------------------------------
+                */
+
+                $perTabletPrice = $row['selling_price'];
+
+                /*
+                | Final base amount
+                | Example:
+                | 10 tablets × 4.40 = 44
+                */
 
                 $base = $perTabletPrice * $qty;
 
-                // loose stock reduce
+                /*
+                | Reduce loose stock
+                */
+
                 $batch->reduceLooseStock($qty);
 
                 $movementUnit = 'Tablet';
                 $unitQty = $qty;
             }
 
+         /*
+|--------------------------------------------------------------------------
+| GST CALCULATION
+|--------------------------------------------------------------------------
+*/
+
+$purchaseItem = \App\Models\PurchaseItem::where('batch_id', $batch->id)
+    ->first();
+
+$gstPercent = $purchaseItem->gst_percent ?? 0;
+
+$gstAmount = ($base * $gstPercent) / 100;
+
+$finalAmount = $base + $gstAmount;
+
             /*
-            ========================================
-            GST CALCULATION
-            ========================================
-            */
-
-            $gstPercent = $item->gst_percent ?? 0;
-            $gstAmount = ($base * $gstPercent) / 100;
-
-            $final = $base + $gstAmount;
-
-            /*
-            ========================================
-            SALES ITEM SAVE
-            ========================================
+            |--------------------------------------------------------------------------
+            | SALES ITEM SAVE DATA
+            |--------------------------------------------------------------------------
             */
 
             $itemsData[] = [
@@ -186,82 +488,142 @@ public function store(Request $request)
                 'item_id' => $item->id,
                 'batch_id' => $batch->id,
 
-                // strip equivalent qty
-                'quantity' => $saleType === 'strip'
-                    ? $qty
-                    : ($qty / $conversionFactor),
+                /*
+                |--------------------------------------------------------------------------
+                | IMPORTANT FIX
+                |--------------------------------------------------------------------------
+                | Save ACTUAL quantity
+                |
+                | strip → 2 strip = 2
+                | loose → 10 tablets = 10
+                |
+                | NOT:
+                | 10 / 10 = 1
+                |--------------------------------------------------------------------------
+                */
+
+                'quantity' => $qty,
 
                 'sale_type' => $saleType,
                 'unit_qty' => $unitQty,
 
+                /*
+                | Unit price
+                */
+
                 'selling_price' => $row['selling_price'],
+
+                /*
+                | Batch MRP
+                */
+
                 'mrp' => $batch->mrp,
+
                 'discount' => 0,
+
+                /*
+                | GST
+                */
 
                 'gst' => $gstPercent,
                 'gst_amount' => $gstAmount,
-                'amount' => $final,
+
+                /*
+                | Final line total
+                */
+
+                'amount' => $finalAmount,
 
                 'created_at' => now(),
-                'updated_at' => now()
+                'updated_at' => now(),
             ];
 
             /*
-            ========================================
-            STOCK MOVEMENT
-            ========================================
+            |--------------------------------------------------------------------------
+            | STOCK MOVEMENT
+            |--------------------------------------------------------------------------
             */
 
-            StockMovement::create([
-                'item_id' => $item->id,
-                'batch_id' => $batch->id,
+            // StockMovement::create([
+            //     'item_id' => $item->id,
+            //     'batch_id' => $batch->id,
 
-                'type' => 'sale',
-                'sale_type' => $saleType,
-                'movement_unit' => $movementUnit,
+            //     'type' => 'sale',
+            //     'sale_type' => $saleType,
+            //     'movement_unit' => $movementUnit,
 
-                'quantity' => -$unitQty,
+            //     'quantity' => -$unitQty,
 
-                'running_stock' => $saleType === 'strip'
-                    ? $batch->fresh()->stock
-                    : $batch->fresh()->loose_stock,
+            //     'running_stock' => $saleType === 'strip'
+            //         ? $batch->fresh()->stock
+            //         : $batch->fresh()->loose_stock,
 
-                'reference_id' => $sale->id,
-                'reference_type' => Sale::class,
+            //     'reference_id' => $sale->id,
+            //     'reference_type' => Sale::class,
 
-                'user_id' => Auth::id(),
-                'remarks' => 'Sale #' . $billNumber,
-            ]);
+            //     'user_id' => Auth::id(),
+            //     'remarks' => 'Sale #' . $billNumber,
+            // ]);
+        StockMovement::create([
+    'item_id' => $item->id,
+    'batch_id' => $batch->id,
+
+    'type' => 'sale',
+
+    // FIX THIS
+    'direction' => 'out',
+
+    'sale_type' => $saleType,
+    'movement_unit' => $movementUnit,
+
+    'quantity' => -$unitQty,
+
+    'running_stock' => $saleType === 'strip'
+        ? $batch->fresh()->stock
+        : $batch->fresh()->loose_stock,
+
+    'reference_id' => $sale->id,
+    'reference_type' => Sale::class,
+
+    'user_id' => Auth::id(),
+    'remarks' => 'Sale #' . $billNumber,
+]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | TOTALS
+            |--------------------------------------------------------------------------
+            */
 
             $subtotal += $base;
             $totalGST += $gstAmount;
-            $grandTotal += $final;
+            $grandTotal += $finalAmount;
         }
 
         /*
-        ========================================
-        SAVE SALES ITEMS
-        ========================================
+        |--------------------------------------------------------------------------
+        | INSERT SALES ITEMS
+        |--------------------------------------------------------------------------
         */
 
         SalesItem::insert($itemsData);
 
         /*
-        ========================================
-        UPDATE SALE TOTALS
-        ========================================
+        |--------------------------------------------------------------------------
+        | UPDATE SALE TOTALS
+        |--------------------------------------------------------------------------
         */
 
         $sale->update([
             'total_amount' => $subtotal,
             'gst' => $totalGST,
-            'net_amount' => $grandTotal
+            'net_amount' => $grandTotal,
         ]);
 
         /*
-        ========================================
-        CUSTOMER LEDGER
-        ========================================
+        |--------------------------------------------------------------------------
+        | CUSTOMER LEDGER (ONLY CREDIT SALE)
+        |--------------------------------------------------------------------------
         */
 
         if (
@@ -299,7 +661,10 @@ public function store(Request $request)
 
         DB::rollBack();
 
-        return back()->with('error', $e->getMessage());
+        return back()->with(
+            'error',
+            $e->getMessage()
+        );
     }
 }
     // =========================
