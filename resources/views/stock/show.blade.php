@@ -61,8 +61,8 @@
             </div>
 
             <div class="col-md-4">
-            @php
-    $availableTotal = ($totalAvailableStrip ?? 0) + ($totalAvailableLoose ?? 0);
+       @php
+    $availableTotal = $totalAvailableStrip ?? 0;
 
     $stockClass = $availableTotal > 10
         ? 'success'
@@ -71,6 +71,16 @@
     $stockIcon = $availableTotal > 10
         ? 'check-circle'
         : ($availableTotal > 0 ? 'exclamation-circle' : 'x-circle');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dynamic Unit from DB
+    |--------------------------------------------------------------------------
+    */
+
+    $mainUnit = $item->product_form
+        ?? $item->packaging_detail
+        ?? 'Unit';
 @endphp
                 <div class="card border-{{ $stockClass }} h-100 shadow-sm">
                     <div class="card-body">
@@ -83,7 +93,7 @@
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="text-muted mb-1">Available Stock</h6>
                            @php
-    $mainUnit = $item->product_form ?? 'Unit';
+$mainUnit = $item->packaging_detail
 @endphp
 
 <h3 class="mb-0 text-{{ $stockClass }}">
@@ -93,7 +103,6 @@
         + {{ number_format($totalAvailableLoose) }} Loose
     @endif
 </h3>
-
 @if(!empty($item->packaging_detail))
     <small class="text-muted d-block mt-1">
         {{ $item->packaging_detail }}
