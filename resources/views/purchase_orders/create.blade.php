@@ -102,7 +102,7 @@
         </div>
 
         <div class="d-flex justify-content-between mb-2">
-            <strong>Total GST:</strong>
+            <strong>Total GST Amount:</strong>
             <span id="gstTotalValue">₹0.00</span>
         </div>
 
@@ -591,7 +591,18 @@ await selectSupplier(supplier, card);                            });
             return;
         }
         let html = '';
-supplierCatalogItems.forEach((item, index) => {            const imgUrl = getImageUrl(item);
+supplierCatalogItems.forEach((item, index) => {
+
+    const stock = item.current_stock ?? item.real_stock ?? 0;
+
+    const isExpired = item.expiry_date
+        ? new Date(item.expiry_date) < new Date(new Date().setHours(0,0,0,0))
+        : false;
+
+    // expired + out of stock item bilkul mat dikhao
+    if (stock <= 0 || isExpired) {
+        return;
+    }      const imgUrl = getImageUrl(item);
             html += `
                 <div class="col-md-3 col-sm-6">
                     <div class="catalog-item-card" data-index="${index}">                        <img src="${imgUrl}" class="img-fluid rounded-3 mb-2" style="height:85px;width:100%;object-fit:cover;" onerror="this.src='https://placehold.co/600x400?text=Medicine'">

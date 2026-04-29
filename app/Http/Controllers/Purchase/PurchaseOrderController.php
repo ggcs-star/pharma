@@ -116,8 +116,10 @@ $data = SupplierItemCatalog::with(['supplier','item'])
     ->where('item_id', $request->item_id)
     ->where('is_active', 1)
     ->where('current_stock', '>', 0)
-    ->whereDate('expiry_date', '>', Carbon::today())
-    ->get();
+->where(function ($q) {
+    $q->whereNull('expiry_date')
+      ->orWhereDate('expiry_date', '>=', now()->startOfDay());
+})    ->get();
 
     return response()->json(
         $data->map(function ($catalog) {
@@ -168,15 +170,16 @@ $data = SupplierItemCatalog::with(['supplier','item'])
 }
 public function getSupplierItems($supplierId)
 {
-    $data = SupplierItemCatalog::with(['item'])
-        ->select('*') // 🔥 ADD THIS
-  ->where('supplier_id', $supplierId)
-->where('is_active', 1)
-->where('current_stock', '>', 0)
-->whereDate('expiry_date', '>', Carbon::today())
-        ->whereNotNull('item_id')
-        ->get();
-
+   $data = SupplierItemCatalog::with(['item'])
+    ->where('supplier_id', $supplierId)
+    ->where('is_active', 1)
+    ->where('current_stock', '>', 0)
+    ->where(function ($q) {
+        $q->whereNull('expiry_date')
+          ->orWhereDate('expiry_date', '>=', now()->startOfDay());
+    })
+    ->whereNotNull('item_id')
+    ->get();
     return response()->json(
         $data->map(function ($catalog) {
 
@@ -717,20 +720,35 @@ public function publishSale($id)
     |------------------------------------------------------------------
     */
 
-    if (
-        (float) $catalog->current_stock <= 0 ||
-        (
-            $catalog->expiry_date &&
-            \Carbon\Carbon::parse($catalog->expiry_date)->isPast()
-        )
-    ) {
-        throw new \Exception(
-            'Expired or Out of Stock item cannot be published for Item ID: '
-            . $poItem->item_id
-        );
-    }
+  /*
+|--------------------------------------------------------------------------
+| FINAL SAFE VALIDATION
+|--------------------------------------------------------------------------
+| PO create hone ke baad stock re-check nahi karna
+| Sirf true expiry validate karni hai
+|--------------------------------------------------------------------------
+*/
 
-    $qty = (float) ($poItem->quantity ?? 0);
+if (
+    $catalog->expiry_date &&
+    \Carbon\Carbon::parse($catalog->expiry_date)
+        ->lt(now()->startOfDay())
+) {
+    throw new \Exception(
+        'Expired item cannot be published for Item ID: '
+        . $poItem->item_id
+    );
+}
+
+$qty = (float) ($poItem->quantity ?? 0);
+
+if ($qty <= 0) {
+    throw new \Exception(
+        'Invalid quantity for Item ID: '
+        . $poItem->item_id
+    );
+}
+
 /*
 |--------------------------------------------------------------------------
 | PTR Logic
