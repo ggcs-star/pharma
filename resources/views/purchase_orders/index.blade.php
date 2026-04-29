@@ -265,8 +265,9 @@
                             </span>
                         </td>
                         <td class="text-end">
-                            <span class="amount">₹ {{ number_format($order->total_amount ?? 0, 2) }}</span>
-                        </td>
+<span class="amount">
+    ₹ {{ number_format($order->net_amount ?? 0, 2) }}
+</span>                        </td>
                         <td class="text-center">
                             @php $cfg = $statusConfig[$order->status] ?? $statusConfig['pending']; @endphp
                             <span class="status-badge" style="background: {{ $cfg['bg'] }}; color: {{ $cfg['color'] }}; border-left-color: {{ $cfg['color'] }};">
@@ -489,9 +490,10 @@
                                     <span class="fw-semibold">{{ $order->items_count ?? 0 }} products</span>
                                 </div>
                                 <div class="col-6">
-                                    <small class="text-muted d-block">Purchase Total</small>
-                                    <span class="fw-semibold text-success">₹ {{ number_format($order->total_amount ?? 0, 2) }}</span>
-                                </div>
+                                    <small class="text-muted d-block">Purchase Grand Total</small>
+<span class="fw-semibold text-success">
+    ₹ {{ number_format($order->net_amount ?? 0, 2) }}
+</span>                                </div>
                             </div>
                         </div>
                         
@@ -501,9 +503,9 @@
                                     <tr>
                                         <th style="width: 22%;">Item Name</th>
                                         <th style="width: 15%;">PTR</th>
-                                        <th style="width: 15%;">Supplier MRP</th>
+                                        <th style="width: 15%;">MRP</th>
                                         <th style="width: 20%;">Final MRP</th>
-                                        <th style="width: 20%;">Strip Size</th>
+                                        <th style="width: 20%;">Pack Size</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -541,16 +543,36 @@
                                                    name="items[{{ $index }}][final_mrp]"
                                                    placeholder="Enter MRP"
                                                    data-order-id="{{ $order->id }}"
-                                                   data-purchase-total="{{ $order->total_amount ?? 0 }}">
+                                                   data-purchase-total="{{ $order->net_amount ?? 0 }}">
                                         </td>
                                         <td>
-    <input type="hidden"
-           name="items[{{ $index }}][conversion_factor]"
-           value="{{ $poItem->item->conversion_factor ?? 1 }}">
+@php
+    $packSize = optional($poItem->supplierItemCatalog)->pack_size
+                ?? $poItem->item->conversion_factor
+                ?? 1;
 
-    <div class="form-control bg-light fw-semibold text-center">
-        {{ $poItem->item->conversion_factor ?? 1 }}
-    </div>
+    $itemName = strtolower($poItem->item->name ?? '');
+
+    if (str_contains($itemName, 'injection')) {
+        $packType = 'Vial';
+        $unitType = 'Injection';
+    } elseif (str_contains($itemName, 'syrup')) {
+        $packType = 'Bottle';
+        $unitType = 'ml';
+    } elseif (str_contains($itemName, 'capsule')) {
+        $packType = 'Strip';
+        $unitType = 'Capsule';
+    } else {
+        $packType = 'Strip';
+        $unitType = 'Tablet';
+    }
+@endphp
+
+<div class="fw-semibold text-primary small">
+    📦 1 {{ $packType }} of {{ $packSize }} {{ $unitType }}
+</div>
+
+
 </td>
                                     </tr>
                                     @endforeach
@@ -569,9 +591,9 @@
                                 <div>
                                     <small class="d-block text-muted">Estimated Profit Margin</small>
                                     <span class="fw-semibold profit-preview-text" data-profit-preview="{{ $order->id }}">Enter Final MRP to see profit preview</span>
-                                    <small class="text-muted d-block mt-1">
-                                        Based on purchase total: ₹ {{ number_format($order->total_amount ?? 0, 2) }}
-                                    </small>
+                                  <small class="text-muted d-block mt-1">
+    Based on Grand Total: ₹ {{ number_format($order->net_amount ?? 0, 2) }}
+</small>
                                 </div>
                             </div>
                         </div>
@@ -1348,11 +1370,11 @@
     
     // Initialize profit preview for each order modal
     @foreach($orders as $order)
-        updateProfitPreview(
-            {{ $order->id }},
-            {{ $order->total_amount ?? 0 }}
-        );
-    @endforeach
+    updateProfitPreview(
+        {{ $order->id }},
+        {{ $order->net_amount ?? 0 }}
+    );
+@endforeach
     
     // Cancel order function
     function cancelOrder(id) {
