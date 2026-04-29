@@ -1,7 +1,141 @@
 @extends('layouts.master')
 
 @section('content')
+@if($expiredStockCount > 0 || $outOfStockCount > 0)
 
+<div class="modal fade" id="stockAlertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    ⚠ Critical Stock Alert
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="modal">
+                </button>
+            </div>
+
+         <div class="modal-body">
+
+    <h6 class="mb-3 text-danger">Expiring / Expired Medicines</h6>
+
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Medicine</th>
+                    <th>Batch</th>
+                    <th>Expiry</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {{-- Expiring Soon --}}
+                @foreach($expiringSoonBatches as $batch)
+                <tr>
+                    <td>
+   @if(!empty($batch->item->main_image))
+    <img
+        src="{{ $batch->item->main_image }}"
+        width="50"
+        height="50"
+        style="object-fit: cover; border-radius: 8px;"
+    >
+@else
+    <img
+        src="{{ asset('images/default-medicine.png') }}"
+        width="50"
+        height="50"
+        style="object-fit: cover; border-radius: 8px;"
+    >
+@endif
+</td>
+
+                    <td>{{ $batch->item->name ?? '-' }}</td>
+<td>
+    {{
+        $batch->batch_code
+        ?? $batch->batch_no
+        ?? ('BATCH-ID-' . $batch->id)
+    }}
+</td>                    <td>{{ \Carbon\Carbon::parse($batch->expiry_date)->format('d M Y') }}</td>
+                    <td>{{ $batch->stock }}</td>
+
+                    <td>
+                        <span class="badge bg-warning text-dark">
+                            Expiring Soon
+                        </span>
+                    </td>
+                </tr>
+                @endforeach
+
+                {{-- Expired --}}
+                @foreach($expiredBatches as $batch)
+                <tr>
+                   <td>
+    @if(!empty($batch->item->main_image))
+        <img
+            src="{{ $batch->item->main_image }}"
+            width="50"
+            height="50"
+            style="object-fit: cover; border-radius: 8px;"
+        >
+    @else
+        <img
+            src="{{ asset('images/default-medicine.png') }}"
+            width="50"
+            height="50"
+            style="object-fit: cover; border-radius: 8px;"
+        >
+    @endif
+</td>
+
+                    <td>{{ $batch->item->name ?? '-' }}</td>
+<td>
+    {{
+        $batch->batch_code
+        ?? $batch->batch_no
+        ?? ('BATCH-ID-' . $batch->id)
+    }}
+</td>                    <td>{{ \Carbon\Carbon::parse($batch->expiry_date)->format('d M Y') }}</td>
+                    <td>{{ $batch->stock }}</td>
+
+                    <td>
+                        <span class="badge bg-danger">
+                            Expired
+                        </span>
+                    </td>
+                </tr>
+                @endforeach
+
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@endif
 <div class="container-fluid px-4">
     {{-- Header with Welcome Message and Date --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -378,13 +512,28 @@
     }
 </style>
 @endpush
-
 @push('scripts')
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+@if(session('show_stock_alert') && ($expiredStockCount > 0 || $outOfStockCount > 0))
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    let modalElement = document.getElementById('stockAlertModal');
+
+    if (modalElement) {
+        let stockModal = new bootstrap.Modal(modalElement);
+        stockModal.show();
+    }
+});
+</script>
+@endif
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Sales Chart with dynamic data from controller
+
     const ctx = document.getElementById('salesChart').getContext('2d');
+
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -400,40 +549,11 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return '₹ ' + context.raw.toLocaleString('en-IN');
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        display: true,
-                        color: 'rgba(0,0,0,0.05)'
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return '₹ ' + value.toLocaleString('en-IN');
-                        }
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
+            maintainAspectRatio: false
         }
     });
+
 });
 </script>
+
 @endpush

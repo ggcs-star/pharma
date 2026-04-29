@@ -51,13 +51,16 @@ class AuthController extends Controller
 
             $email = strtolower(trim($request->email));
 
-            if (Auth::attempt([
-                'email'    => $email,
-                'password' => $request->password,
-            ])) {
-                $request->session()->regenerate();
-                return redirect()->route('dashboard');
-            }
+         if (Auth::attempt([
+    'email' => $email,
+    'password' => $request->password,
+])) {
+    $request->session()->regenerate();
+
+    $request->session()->flash('show_stock_alert', true);
+
+    return redirect()->route('dashboard');
+}
 
             return back()
                 ->withErrors(['email' => 'Invalid email or password'])

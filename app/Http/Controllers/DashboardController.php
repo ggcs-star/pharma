@@ -121,6 +121,50 @@ class DashboardController extends Controller
             ->whereDate('expiry_date', '>', now())
             ->where('stock', '>', 0)
             ->count();
+            $expiredStockCount = Batch::whereDate('expiry_date', '<', now())
+    ->where('stock', '>', 0)
+    ->count();
+
+$outOfStockCount = Batch::where('stock', '<=', 0)
+    ->count();
+
+/*
+|--------------------------------------------------------------------------
+| Expiring Soon Medicines With Image
+|--------------------------------------------------------------------------
+*/
+
+$expiringSoonBatches = Batch::with('item')
+    ->whereDate('expiry_date', '>=', now())
+    ->whereDate('expiry_date', '<=', now()->addDays(30))
+    ->where('stock', '>', 0)
+    ->orderBy('expiry_date', 'asc')
+    ->limit(10)
+    ->get();
+
+/*
+|--------------------------------------------------------------------------
+| Expired Medicines With Image
+|--------------------------------------------------------------------------
+*/
+
+$expiredBatches = Batch::with('item')
+    ->whereDate('expiry_date', '<', now())
+    ->where('stock', '>', 0)
+    ->orderBy('expiry_date', 'asc')
+    ->limit(10)
+    ->get();
+
+/*
+|--------------------------------------------------------------------------
+| Out Of Stock Medicines With Image
+|--------------------------------------------------------------------------
+*/
+
+$outOfStockBatches = Batch::with('item')
+    ->where('stock', '<=', 0)
+    ->limit(10)
+    ->get();
 
         // ===============================
         // TOTAL COUNTS
@@ -190,7 +234,13 @@ class DashboardController extends Controller
             'totalCategories',
             'recentTransactions',
             'chartLabels',
+            'expiredStockCount',
+'outOfStockCount',
+'expiringSoonBatches',
+'expiredBatches',
+'outOfStockBatches',
             'chartData'
+
         ));
     }
 }
