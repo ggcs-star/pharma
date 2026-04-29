@@ -438,23 +438,94 @@ $onlineOrderSold = DB::table('order_items')
     ->where('item_id', $itemId)
     ->selectRaw('SUM(qty) as total_online_sale')
     ->first();
+/*
+|--------------------------------------------------------------------------
+| Summary values from batch-wise truth
+|--------------------------------------------------------------------------
+|
+| Batch available_stock is final source of truth
+|
+*/
+
 $totalPurchase = $summary->total_purchase ?? 0;
-$totalReturn = $summary->total_return ?? 0;
+$totalReturn   = $summary->total_return ?? 0;
 
-$totalOfflineSold = $summary->total_sold ?? 0;
-$totalOnlineSold = $onlineOrderSold->total_online_sale ?? 0;
+/*
+|--------------------------------------------------------------------------
+| Get valid batches only (exclude expired)
+|--------------------------------------------------------------------------
+*/
 
-$totalSold = $totalOfflineSold + $totalOnlineSold;
+/*
+|--------------------------------------------------------------------------
+| Get valid batches + Correct Strip/Loose Stock
+|--------------------------------------------------------------------------
+*/
 
-$totalAvailableStrip =
-$totalPurchase
-- $totalOfflineSold
-- $totalOnlineSold
-+ $totalReturn;
+$batchesForStock = DB::table('batches')
+    ->where('batches.item_id', $itemId)
+    ->whereDate('batches.expiry_date', '>=', now())
 
-$totalAvailableLoose = DB::table('batches')
-    ->where('item_id', $itemId)
-    ->sum('loose_stock');
+    ->leftJoinSub(
+        $this->stockMovementBatchSubQuery(),
+        's',
+        function ($join) {
+            $join->on('batches.id', '=', 's.batch_id');
+        }
+    )
+
+    ->leftJoinSub(
+        $this->onlineOrderBatchSubQuery(),
+        'o',
+        function ($join) {
+            $join->on('batches.id', '=', 'o.batch_id');
+        }
+    )
+
+    ->select([
+        'batches.id',
+        'batches.batch_code',
+        'batches.stock',
+        'batches.loose_stock',
+
+        DB::raw("
+            (
+                COALESCE(s.total_purchase, 0)
+                - COALESCE(s.total_sale, 0)
+                - COALESCE(o.total_online_sale, 0)
+                + COALESCE(s.total_return, 0)
+            ) as available_stock
+        ")
+    ])
+    ->get();
+
+/*
+|--------------------------------------------------------------------------
+| Final Available Stock
+|--------------------------------------------------------------------------
+*/
+
+$totalAvailableStrip = 0;
+$totalAvailableLoose = 0;
+
+foreach ($batchesForStock as $batch) {
+    $totalAvailableStrip += (int) ($batch->stock ?? 0);
+    $totalAvailableLoose += (int) ($batch->loose_stock ?? 0);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Sold = Purchase - Available + Return
+|--------------------------------------------------------------------------
+*/
+
+$totalSold = $summary->total_sold ?? 0;/*
+|--------------------------------------------------------------------------
+| Convert everything into loose first
+|--------------------------------------------------------------------------
+*/
+
+
     /*
     |--------------------------------------------------------------------------
     | Batch-wise stock
