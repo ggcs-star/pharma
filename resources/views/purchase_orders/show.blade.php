@@ -205,8 +205,25 @@ $expiryDate = ($batch && $batch->expiry_date)
     : '-';@endphp
                             <tr>
                                 <td class="text-center">{{ $key + 1 }}</td>
-                                <td class="fw-medium">{{ $item->item->name ?? 'Unknown Item' }}</td>
-                                <td class="text-center">{{ $batchNo }}</td>
+<td>
+    <div class="fw-medium">
+        {{ $item->item->name ?? 'Unknown Item' }}
+    </div>
+
+    @php
+        $packing = \App\Models\ItemPacking::where('item_id', $item->item_id)->first();
+
+        $packDetail = $packing->packaging_detail ?? 'Packing Not Available';
+        $productForm = $packing->product_form ?? '';
+    @endphp
+
+    <small class="text-primary fw-semibold d-block mt-1">
+        📦 {{ ucfirst($packDetail) }}
+        @if($productForm)
+            — {{ $productForm }}
+        @endif
+    </small>
+</td>                                <td class="text-center">{{ $batchNo }}</td>
                                 <td class="text-center">{{ $expiryDate }}</td>
                                 <td class="text-end">{{ number_format($item->quantity, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->free_quantity ?? 0, 2) }}</td>
