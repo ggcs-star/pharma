@@ -94,10 +94,10 @@
                             <i class="fas fa-credit-card text-primary me-1"></i> Payment Mode <span class="text-danger">*</span>
                         </label>
                         <select name="payment_type" class="form-select form-select-lg" required>
-                            <option value="cash">💵 Cash</option>
-                            <option value="card">💳 Card</option>
-                            <option value="upi">📱 UPI</option>
-                            <option value="credit">📝 Credit</option>
+                            <option value="cash"> Cash</option>
+                            <option value="card"> Card</option>
+                            <option value="upi"> UPI</option>
+                            <option value="credit"> Credit</option>
                         </select>
                     </div>
                 </div>
@@ -122,7 +122,7 @@
                             <tr class="text-center">
                                 <th width="3%" class="py-3">#</th>
                                 <th width="18%" class="py-3">Product <span class="text-danger">*</span></th>
-                                <th width="6%" class="py-3">Pack</th>
+<th width="14%" class="py-3">Pack</th>
                                 <th width="10%" class="py-3">Batch No</th>
                                 <th width="8%" class="py-3">Expiry</th>
                                 <th width="8%" class="py-3">Sale Type</th>
@@ -270,8 +270,12 @@ function addRow() {
             <input type="hidden" name="items[${rowIndex}][hsn_code]" class="hsnCode">
         </td>
         <td>
-            <input type="text" name="items[${rowIndex}][pack]" class="form-control form-control-sm pack text-center" readonly>
-        </td>
+<input type="text"
+       name="items[${rowIndex}][pack]"
+       class="form-control form-control-sm pack text-center fw-semibold"
+       readonly
+       placeholder="Packing"
+       style="min-width: 180px;">        </td>
         <td>
             <input type="hidden" name="items[${rowIndex}][batch_id]" class="batch_id">
             <input type="text" name="items[${rowIndex}][batch]" class="form-control form-control-sm batch text-center" readonly>
@@ -367,14 +371,33 @@ document.addEventListener('change', function(e) {
         if (!id) return;
 
         // BASIC ITEM DATA
-        fetch(`/api/item-details/${id}`)
-            .then(res => res.json())
-            .then(data => {
-                row.querySelector('.pack').value = data.pack_type ?? '';
-                row.querySelector('.gst').value = data.gst ?? 0;
-            })
-            .catch(err => console.error('Error fetching item details:', err));
+     fetch(`/api/item-details/${id}`)
+    .then(res => res.json())
+    .then(data => {
 
+        let packing = data.pack_type || '';
+        let packingText = packing;
+
+        // Example:
+        // 10 strip of 10 tablets
+        // → 1 Strip = 10 Tablets
+
+        if (packing.toLowerCase().includes('strip of')) {
+            let match = packing.match(/strip of (\d+)/i);
+
+            if (match && match[1]) {
+                let tablets = parseInt(match[1]) || 0;
+                packingText = `1 Strip = ${tablets} Tablets`;
+            }
+        }
+
+        // proper separate lines
+        row.querySelector('.pack').value = packingText;
+        row.querySelector('.gst').value = data.gst ?? 0;
+        row.dataset.conversionFactor = data.conversion_factor ?? 1;
+
+    })
+    .catch(err => console.error('Error fetching item details:', err));
         // BATCH DATA
         fetch(`/api/get-item-full/${id}`)
             .then(res => res.json())
@@ -433,8 +456,9 @@ document.addEventListener('change', function(e) {
 
         let stripPrice = parseFloat(mrpInput.value || 0);
 
-        let conversionFactor = 10; // TEMP TEST
-
+let conversionFactor = parseFloat(
+    row.dataset.conversionFactor || 1
+);
         if (saleType === 'strip') {
 
             qtyInput.placeholder = 'Strip Qty';

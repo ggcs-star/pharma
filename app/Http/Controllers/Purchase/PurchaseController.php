@@ -92,31 +92,52 @@ if ($request->filled('to_date')) {
     | Create Purchase
     |--------------------------------------------------------------------------
     */
-   public function create()
+public function create()
 {
     $suppliers = Supplier::all();
-    $items = Item::select('id', 'name', 'gst_percent', 'barcode', 'rack', 'hsn_code')->get();
 
-    return view('purchase.create', compact('suppliers', 'items'));
+    $items = Item::with('packings')
+        ->select(
+            'id',
+            'name',
+            'gst_percent',
+            'barcode',
+            'rack',
+            'hsn_code'
+        )
+        ->get();
+
+    return view('purchase.create', compact(
+        'suppliers',
+        'items'
+    ));
 }
-
     /*
     |--------------------------------------------------------------------------
     | AJAX : Get Item Details
     |--------------------------------------------------------------------------
     */
     public function getItem($id)
-    {
-        $item = Item::findOrFail($id);
+{
+    $item = Item::with('packings')->findOrFail($id);
 
-        return response()->json([
-            'gst_percent' => $item->gst_percent,
-            'barcode' => $item->barcode ?? null,
-            'rack' => $item->rack ?? null,
-            'hsn_code' => $item->hsn_code ?? null,
-            
-        ]);
-    }
+    return response()->json([
+        'gst_percent' => $item->gst_percent ?? 0,
+        'barcode' => $item->barcode ?? '',
+        'rack' => $item->rack ?? '',
+        'hsn_code' => $item->hsn_code ?? '',
+
+        // Batch-based system → default manual entry
+        'mrp' => 0,
+        'purchase_rate' => 0,
+
+        // packing from item_packings table
+        'packing' => optional(
+            $item->packings->first()
+        )->packaging_detail ?? '',
+    ]);
+}
+    
 
     /*
     |--------------------------------------------------------------------------

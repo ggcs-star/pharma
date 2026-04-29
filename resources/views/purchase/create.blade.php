@@ -87,6 +87,7 @@
                                 <tr class="text-center small">
                                     <th style="width: 3%;">#</th>
                                     <th style="width: 12%;">Item <span class="text-danger">*</span></th>
+                                    <th style="width: 7%;">Packing</th>
                                     <th style="width: 5%;">Qty <span class="text-danger">*</span></th>
                                     <th style="width: 5%;">Free</th>
                                     <th style="width: 8%;">Batch No <span class="text-danger">*</span></th>
@@ -197,8 +198,15 @@
                     </select>
                     <input type="hidden" name="items[${index}][barcode]" class="barcode">
                     <input type="hidden" name="items[${index}][hsn_code]" class="hsnCode">
+                    <input type="hidden" name="items[${index}][packing]" class="packingValue">
                     
                 </td>
+      <td>
+    <div class="packingDisplay border rounded bg-light px-2 py-1 text-center small">
+        <div class="fw-bold packingMain">--</div>
+        <div class="text-success packingSub">--</div>
+    </div>
+</td>
                 <td>
                     <input type="number" name="items[${index}][quantity]" class="form-control form-control-sm qty text-center" 
                            step="any" value="0" min="0" required>
@@ -265,7 +273,8 @@
             barcode: item.barcode || '',
             rack: item.rack || '',
             mrp: item.mrp || 0,
-            purchase_rate: item.purchase_rate || 0
+            purchase_rate: item.purchase_rate || 0,
+packing: item.packing_details?.packaging_detail || ''
         }));
 
         const ts = new TomSelect(element, {
@@ -355,22 +364,55 @@
             console.error('Error:', error);
         }
     }
+// Packing ko sirf 10x10 ki jagah
+// "1 Strip = 10 Tablets" format me dikhana hai
 
-    function populateItemData(data, row) {
-        if (!data) return;
-        
-        row.querySelector('.gst').value = data.gst_percent || 0;
-        row.querySelector('.barcode').value = data.barcode || '';
-        row.querySelector('.rack').value = data.rack || '';
-        row.querySelector('.hsnCode').value = data.hsn_code || '';
-        if (data.mrp) row.querySelector('.mrp').value = data.mrp;
-        if (data.purchase_rate) row.querySelector('.rate').value = data.purchase_rate;
-        
-        calculateRowTotal(row);
-        calculateTotal();
+function populateItemData(data, row) {
+    if (!data) return;
+
+    row.querySelector('.gst').value = data.gst_percent || 0;
+    row.querySelector('.barcode').value = data.barcode || '';
+    row.querySelector('.rack').value = data.rack || '';
+    row.querySelector('.hsnCode').value = data.hsn_code || '';
+
+    // ===== PACKING DISPLAY FIX =====
+
+    let packing = data.packing || '';
+
+    let mainText = packing;
+    let subText = '';
+
+    // Example:
+    // 10x10  =>  1 Strip = 10 Tablets
+
+    if (packing.includes('x')) {
+        let parts = packing.split('x');
+
+        if (parts.length >= 2) {
+            let stripSize = parseInt(parts[1]) || 0;
+
+            mainText = packing;
+            subText = `1 Strip = ${stripSize} Tablets`;
+        }
     }
 
-    function calculateRowTotal(row) {
+    row.querySelector('.packingValue').value = packing;
+
+    // IMPORTANT:
+    // .value nahi use karna
+    // innerText use karna hai
+
+    row.querySelector('.packingMain').innerText = mainText;
+    row.querySelector('.packingSub').innerText = subText;
+
+    // ===============================
+
+    if (data.mrp) row.querySelector('.mrp').value = data.mrp;
+    if (data.purchase_rate) row.querySelector('.rate').value = data.purchase_rate;
+
+    calculateRowTotal(row);
+    calculateTotal();
+}    function calculateRowTotal(row) {
         const qty = parseFloat(row.querySelector('.qty')?.value) || 0;
         const rate = parseFloat(row.querySelector('.rate')?.value) || 0;
         const gst = parseFloat(row.querySelector('.gst')?.value) || 0;

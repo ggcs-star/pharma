@@ -99,7 +99,7 @@ $(document).ready(function() {
             'rate' => $pi->ptr,
             'purchased_qty' => $pi->quantity,
             'returned_qty' => $pi->returned_quantity ?? 0,
-            'available_qty' => $pi->quantity - ($pi->returned_quantity ?? 0)
+    'available_qty' => max(0, $pi->batch->stock),
         ];
     })) !!};
     

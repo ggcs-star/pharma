@@ -197,13 +197,14 @@
     }
 
     /* Table Styles */
-    .table-container {
-        background: white;
-        border-radius: 20px;
-        border: 1px solid #eef2ff;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
+  .table-container {
+    background: white;
+    border-radius: 20px;
+    border: 1px solid #eef2ff;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
 
     .stock-table {
         width: 100%;
@@ -341,42 +342,78 @@
     }
 
     /* Pagination */
-    .pagination-container {
-        padding: 20px 24px;
-        background: white;
-        border-top: 1px solid #eef2ff;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
+   /* Fixed Pagination UI */
+.pagination-container {
+    padding: 24px;
+    background: #fff;
+    border-top: 1px solid #eef2ff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
 
-    .pagination {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
+.showing-info {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+}
 
-    .pagination a, .pagination span {
-        padding: 8px 14px;
-        border-radius: 10px;
-        font-size: 0.8rem;
-        text-decoration: none;
-        transition: all 0.2s;
-        background: #f1f5f9;
-        color: #475569;
-    }
+.pagination {
+    margin: 0;
+}
 
-    .pagination a:hover {
-        background: #0ea5e9;
-        color: white;
-    }
+.pagination nav {
+    width: 100%;
+}
 
-    .pagination .active {
-        background: #0ea5e9;
-        color: white;
-    }
+.pagination svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+.pagination .flex {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pagination span,
+.pagination a {
+    min-width: 42px;
+    height: 42px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.pagination a:hover {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+
+.pagination .relative.inline-flex.items-center.px-4.py-2.text-sm.font-medium.text-white {
+    background: #2563eb !important;
+    color: #fff !important;
+    border-color: #2563eb !important;
+}
+
+.pagination .text-gray-500,
+.pagination .text-gray-400 {
+    opacity: 0.6;
+}
 
     .showing-info {
         font-size: 0.75rem;
@@ -651,9 +688,9 @@
         <div class="showing-info">
             <i class="fa fa-database"></i> Showing <span id="showingCount">{{ $stocks->count() }}</span> of {{ $stocks->count() }} entries
         </div>
-        <div class="pagination" id="pagination">
-            {{ $stocks->links() }}
-        </div>
+      <div class="pagination" id="pagination">
+    {{ $stocks->onEachSide(1)->links('pagination::bootstrap-4') }}
+</div>
     </div>
     @else
     <div class="empty-state">
