@@ -61,10 +61,17 @@
             </div>
 
             <div class="col-md-4">
-                @php
-                    $stockClass = $available > 10 ? 'success' : ($available > 0 ? 'warning' : 'danger');
-                    $stockIcon = $available > 10 ? 'check-circle' : ($available > 0 ? 'exclamation-circle' : 'x-circle');
-                @endphp
+            @php
+    $availableTotal = ($totalAvailableStrip ?? 0) + ($totalAvailableLoose ?? 0);
+
+    $stockClass = $availableTotal > 10
+        ? 'success'
+        : ($availableTotal > 0 ? 'warning' : 'danger');
+
+    $stockIcon = $availableTotal > 10
+        ? 'check-circle'
+        : ($availableTotal > 0 ? 'exclamation-circle' : 'x-circle');
+@endphp
                 <div class="card border-{{ $stockClass }} h-100 shadow-sm">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
@@ -75,7 +82,23 @@
                             </div>
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="text-muted mb-1">Available Stock</h6>
-                                <h3 class="mb-0 text-{{ $stockClass }}">{{ number_format($available) }}</h3>
+                           @php
+    $mainUnit = $item->product_form ?? 'Unit';
+@endphp
+
+<h3 class="mb-0 text-{{ $stockClass }}">
+    {{ number_format($totalAvailableStrip) }} {{ $mainUnit }}
+
+    @if($totalAvailableLoose > 0)
+        + {{ number_format($totalAvailableLoose) }} Loose
+    @endif
+</h3>
+
+@if(!empty($item->packaging_detail))
+    <small class="text-muted d-block mt-1">
+        {{ $item->packaging_detail }}
+    </small>
+@endif
                                 <small class="text-muted">units remaining</small>
                             </div>
                         </div>
@@ -99,8 +122,8 @@
                                 <th class="ps-4">Batch Code</th>
                                 <th>Expiry Date</th>
                                 <th class="text-center">Purchased</th>
-                                <th class="text-center">Sold</th>
-                                <th class="text-center">Available</th>
+<th class="text-center">Offline Sold</th>
+<th class="text-center">Online Sold</th>                                <th class="text-center">Available</th>
                                 <th class="text-center pe-4">Status</th>
                             </tr>
                         </thead>
@@ -110,9 +133,9 @@
                                     $expiryDate = \Carbon\Carbon::parse($batch->expiry_date);
                                     $isExpired = $expiryDate->isPast();
                                     $isNearExpiry = $expiryDate->diffInDays(now()) <= 30 && !$isExpired;
-                                    $availableStock = $batch->available_stock;
+$availableStock = trim($batch->available_stock ?? '');
 
-                                    if ($availableStock == 0) {
+if ($availableStock == '' || $availableStock == '0 Strip') {
                                         $badgeClass = 'secondary';
                                         $statusText = 'Out of Stock';
                                     } elseif ($isExpired) {
@@ -143,14 +166,21 @@
                                             {{ number_format($batch->total_purchase) }}
                                         </span>
                                     </td>
+                                   <td class="text-center">
+    <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2">
+        {{ number_format($batch->total_sale ?? 0) }}
+    </span>
+</td>
+
+<td class="text-center">
+    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
+        {{ number_format($batch->total_online_sale ?? 0) }}
+    </span>
+</td>
                                     <td class="text-center">
-                                        <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2">
-                                            {{ number_format($batch->total_sale) }}
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="fw-bold">{{ number_format($availableStock) }}</span>
-                                    </td>
+<span class="fw-bold">
+    {{ $batch->available_stock }}
+</span>                                    </td>
                                     <td class="text-center pe-4">
                                         <span class="badge bg-{{ $badgeClass }} bg-opacity-10 text-{{ $badgeClass }} px-3 py-2">
                                             {{ $statusText }}
@@ -159,7 +189,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">
+                                    <td colspan="7" class="text-center py-4 text-muted">
                                         <i class="bi bi-inbox display-4 d-block mb-2"></i>
                                         No batch information available
                                     </td>
@@ -189,6 +219,22 @@
                             <span class="badge bg-success ms-1">{{ $sales->count() }}</span>
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+    <button class="nav-link"
+            id="online-orders-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#onlineOrders"
+            type="button"
+            role="tab">
+
+        <i class="bi bi-globe me-1"></i>
+        Online Orders
+
+        <span class="badge bg-primary ms-1">
+            {{ $onlineOrders->count() }}
+        </span>
+    </button>
+</li>
                 </ul>
             </div>
             <div class="card-body p-0">
@@ -199,58 +245,97 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Date</th>
-                                        <th>Batch Code</th>
-                                        <th class="text-center">Quantity</th>
-                                        <th class="text-center">Free Quantity</th>
-                                        <th class="text-center">Returned</th>
-                                        <th class="text-center pe-4">Net Qty</th>
+                                      <th class="ps-4">Date</th>
+<th>Bill No</th>
+<th>Supplier</th>
+<th>Batch</th>
+<th class="text-center">Qty</th>
+<th class="text-center">PTR</th>
+<th class="text-center">MRP</th>
+<th class="text-center">Purchase Amount</th>
+<th class="text-center pe-4">Net Qty</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse($purchases as $purchase)
-                                        @php
-                                            $netQty = $purchase->quantity + $purchase->free_quantity - $purchase->returned_quantity;
-                                        @endphp
-                                        <tr>
-                                            <td class="ps-4">
-                                                <div class="fw-medium">
-                                                    {{ \Carbon\Carbon::parse($purchase->created_at)->format('d M Y') }}
-                                                </div>
-                                                <small class="text-muted">
-                                                    {{ \Carbon\Carbon::parse($purchase->created_at)->format('h:i A') }}
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary bg-opacity-10 text-secondary">
-                                                    {{ $purchase->batch_code }}
-                                                </span>
-                                            </td>
-                                            <td class="text-center">{{ number_format($purchase->quantity) }}</td>
-                                            <td class="text-center">
-                                                @if($purchase->free_quantity > 0)
-                                                    <span class="badge bg-success bg-opacity-10 text-success">
-                                                        +{{ number_format($purchase->free_quantity) }}
-                                                    </span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-center">
-                                                @if($purchase->returned_quantity > 0)
-                                                    <span class="badge bg-danger bg-opacity-10 text-danger">
-                                                        -{{ number_format($purchase->returned_quantity) }}
-                                                    </span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-center pe-4 fw-medium">
-                                                {{ number_format($netQty) }}
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
+                                  @forelse($purchases as $purchase)
+    @php
+        $netQty = ($purchase->quantity ?? 0)
+                + ($purchase->free_quantity ?? 0)
+                - ($purchase->returned_quantity ?? 0);
+    @endphp
+
+    <tr>
+        {{-- Date --}}
+        <td class="ps-4">
+            <div class="fw-medium">
+                {{ \Carbon\Carbon::parse($purchase->created_at)->format('d M Y') }}
+            </div>
+            <small class="text-muted">
+                {{ \Carbon\Carbon::parse($purchase->created_at)
+                    ->timezone('Asia/Kolkata')
+                    ->format('h:i A') }}
+            </small>
+        </td>
+
+        {{-- Bill No --}}
+        <td>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
+                {{ $purchase->purchase_bill_number ?? '-' }}
+            </span>
+        </td>
+
+        {{-- Supplier --}}
+        <td>
+            <div class="fw-semibold">
+                {{ $purchase->supplier_name ?? '-' }}
+            </div>
+        </td>
+
+        {{-- Batch --}}
+        <td>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2">
+                {{ $purchase->purchase_batch_code ?? '-' }}
+            </span>
+        </td>
+
+        {{-- Qty --}}
+<td class="text-center">
+    <strong>{{ number_format($purchase->quantity ?? 0) }}</strong>
+
+    @if(!empty($purchase->packaging_detail))
+        <br>
+        <small class="text-primary fw-semibold">
+            {{ $purchase->packaging_detail }}
+        </small>
+    @elseif(!empty($purchase->product_form))
+        <br>
+        <small class="text-primary fw-semibold">
+            {{ $purchase->product_form }}
+        </small>
+    @endif
+</td>
+
+        {{-- PTR --}}
+        <td class="text-center">
+            ₹{{ number_format($purchase->ptr ?? 0, 2) }}
+        </td>
+
+        {{-- MRP --}}
+        <td class="text-center">
+            ₹{{ number_format($purchase->mrp ?? 0, 2) }}
+        </td>
+
+        {{-- Purchase Amount --}}
+        <td class="text-center">
+            ₹{{ number_format($purchase->total_amount ?? 0, 2) }}
+        </td>
+
+        {{-- Net Qty --}}
+        <td class="text-center pe-4 fw-bold">
+            {{ number_format($netQty) }}
+        </td>
+    </tr>
+@empty                                        <tr>
                                             <td colspan="6" class="text-center py-5 text-muted">
                                                 <i class="bi bi-cart-x display-4 d-block mb-2"></i>
                                                 No purchase history found
@@ -287,8 +372,9 @@
                                 {{ \Carbon\Carbon::parse($sale->created_at)->format('d M Y') }}
                             </div>
                             <small class="text-muted">
-                                {{ \Carbon\Carbon::parse($sale->created_at)->format('h:i A') }}
-                            </small>
+{{ \Carbon\Carbon::parse($sale->created_at)
+    ->timezone('Asia/Kolkata')
+    ->format('h:i A') }}                            </small>
                         </td>
 
                         <td>
@@ -297,41 +383,49 @@
                             </span>
                         </td>
 
-                        <td>
-                            <div class="fw-semibold">
-                                {{ $sale->customer_name ?? 'Walk-in Customer' }}
-                            </div>
+                      <td>
+    <div class="fw-semibold">
+        {{ $sale->customer_name ?? 'Walk-in Customer' }}
+    </div>
 
-                            @if($sale->customer_mobile)
-                                <small class="d-block text-muted">
-                                    {{ $sale->customer_mobile }}
-                                </small>
-                            @endif
+    @if($sale->customer_mobile)
+        <small class="d-block text-muted">
+            {{ $sale->customer_mobile }}
+        </small>
+    @endif
 
-                            @if($sale->customer_email)
-                                <small class="d-block text-muted">
-                                    {{ $sale->customer_email }}
-                                </small>
-                            @endif
+    @if($sale->customer_email)
+        <small class="d-block text-muted">
+            {{ $sale->customer_email }}
+        </small>
+    @endif
 
-                            @if($sale->customer_address)
-                                <small class="d-block text-muted">
-                                    {{ $sale->customer_address }}
-                                </small>
-                            @endif
+    @if($sale->customer_address)
+        <small class="d-block text-muted">
+            {{ $sale->customer_address }}
+        </small>
+    @endif
 
-                            @if($sale->doctor_name)
-                                <small class="d-block text-info">
-                                    Doctor: {{ $sale->doctor_name }}
-                                </small>
-                            @endif
-                        </td>
+    @if($sale->doctor_name)
+        <small class="d-block text-info">
+            Doctor: {{ $sale->doctor_name }}
+        </small>
+    @endif
 
-                        <td>
-                            <span class="badge bg-secondary bg-opacity-10 text-secondary">
-                                {{ $sale->batch_code }}
-                            </span>
-                        </td>
+    @if($sale->sale_type)
+        <small class="d-block text-primary fw-semibold">
+            {{ ucfirst($sale->sale_type) }}
+            ({{ $sale->unit_qty ?? $sale->qty }} qty)
+            @ ₹{{ number_format($sale->selling_price ?? 0, 2) }}
+        </small>
+    @endif
+</td>
+
+<td>
+    <span class="badge bg-secondary bg-opacity-10 text-secondary">
+        {{ $sale->batch_code }}
+    </span>
+</td>
 
                         <td class="text-center">
                             <strong>{{ number_format($sale->qty) }}</strong>
@@ -362,6 +456,93 @@
                     </tr>
                 @endforelse
             </tbody>
+        </table>
+    </div>
+</div>{{-- Online Orders Tab --}}
+<div class="tab-pane fade" id="onlineOrders" role="tabpanel">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Date</th>
+                    <th>Order ID</th>
+                    <th>Customer Details</th>
+                    <th>Batch</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-center">Amount</th>
+                    <th class="text-center">Payment</th>
+                    <th class="text-center pe-4">Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @forelse($onlineOrders as $order)
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-medium">
+                                {{ \Carbon\Carbon::parse($order->created_at)->format('d M Y') }}
+                            </div>
+                            <small class="text-muted">
+{{ \Carbon\Carbon::parse($order->created_at)
+    ->timezone('Asia/Kolkata')
+    ->format('h:i A') }}                            </small>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
+                                #{{ $order->order_id }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <div class="fw-semibold">
+                                {{ $order->customer_name ?? 'Online Customer' }}
+                            </div>
+
+                            @if($order->customer_email)
+                                <small class="d-block text-muted">
+                                    {{ $order->customer_email }}
+                                </small>
+                            @endif
+                        </td>
+
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                                {{ $order->batch_code }}
+                            </span>
+                        </td>
+
+                        <td class="text-center">
+                            <strong>{{ number_format($order->qty) }}</strong>
+                        </td>
+
+                        <td class="text-center">
+                            ₹{{ number_format($order->total ?? 0, 2) }}
+                        </td>
+
+                        <td class="text-center">
+                            <span class="badge bg-info bg-opacity-10 text-info px-3 py-2">
+                                {{ ucfirst($order->payment_mode ?? 'Online') }}
+                            </span>
+                        </td>
+
+                        <td class="text-center pe-4">
+                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">
+                                {{ ucfirst($order->status ?? 'Completed') }}
+                            </span>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-globe display-4 d-block mb-2"></i>
+                            No online orders found
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+
         </table>
     </div>
 </div>

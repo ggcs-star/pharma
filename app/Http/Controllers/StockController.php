@@ -10,7 +10,7 @@ class StockController extends Controller
 
 
 
-   public function index(Request $request)
+ public function index(Request $request)
 {
     $search = $request->search;
     $fromDate = $request->from_date;
@@ -19,7 +19,89 @@ class StockController extends Controller
     $stocks = $this->getItemStock($search, $fromDate, $toDate);
     $batchStocks = $this->getBatchStock($fromDate, $toDate);
 
-    return view('stock.index', compact('stocks', 'batchStocks'));
+    /*
+    |--------------------------------------------------------------------------
+    | Customer Sales History Mapping
+    |--------------------------------------------------------------------------
+    */
+
+    $customerSales = [];
+
+    foreach ($batchStocks as $itemId => $batches) {
+        foreach ($batches as $batch) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Offline Sales
+            |--------------------------------------------------------------------------
+            */
+
+           $offlineSales = DB::table('sales_items')
+    ->join('sales', 'sales.id', '=', 'sales_items.sale_id')
+    ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
+    ->leftJoin('doctors', 'doctors.id', '=', 'sales.doctor_id')
+    ->where('sales_items.batch_id', $batch->id)
+
+    ->select([
+        'sales.bill_number as bill_no',
+        'sales.created_at',
+        'customers.name as customer_name',
+        'doctors.name as doctor_name',
+
+        DB::raw('sales_items.quantity as quantity'),
+
+        'sales_items.sale_type',
+        'sales_items.unit_qty',
+        'sales_items.selling_price',
+
+        DB::raw("'cash' as payment_mode"),
+        DB::raw("'completed' as status"),
+
+        DB::raw('
+            (
+                sales_items.quantity
+                * sales_items.selling_price
+            ) as total_amount
+        '),
+    ])
+    ->get();
+            /*
+            |--------------------------------------------------------------------------
+            | Online Orders
+            |--------------------------------------------------------------------------
+            */
+
+            $onlineSales = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->leftJoin('users', 'users.id', '=', 'orders.user_id')
+                ->where('order_items.batch_id', $batch->id)
+
+                ->select([
+                    'orders.id as order_no',
+                    'orders.created_at as order_date',
+                    'orders.payment_mode',
+                    'orders.status as order_status',
+                    'users.name as customer_name',
+
+                    'order_items.qty as quantity',
+                    'order_items.price as selling_price',
+
+                    DB::raw('(order_items.qty * order_items.price) as total_amount'),
+                ])
+                ->get();
+
+            $customerSales[$batch->id] = [
+                'offline_sales' => $offlineSales,
+                'online_sales' => $onlineSales,
+            ];
+        }
+    }
+
+    return view('stock.index', compact(
+        'stocks',
+        'batchStocks',
+        'customerSales'
+    ));
 }
 
     
@@ -34,11 +116,11 @@ private function getItemStock($search = null, $fromDate = null, $toDate = null)
         |--------------------------------------------------------------------------
         */
 ->where(function ($q) {
-    $q->whereIn('id', function ($sub) {
+    $q->whereIn('items.id', function ($sub) {
         $sub->select('item_id')
             ->from('stock_movements');
     })
-    ->orWhereIn('id', function ($sub) {
+    ->orWhereIn('items.id', function ($sub) {
         $sub->select('item_id')
             ->from('batches');
     });
@@ -68,7 +150,7 @@ private function getItemStock($search = null, $fromDate = null, $toDate = null)
                 $join->on('items.id', '=', 's.item_id');
             }
         )
-
+->leftJoin('item_packings', 'items.id', '=', 'item_packings.item_id')
         /*
         |--------------------------------------------------------------------------
         | Final Select
@@ -76,14 +158,17 @@ private function getItemStock($search = null, $fromDate = null, $toDate = null)
         */
 
         ->select([
-            'items.*',
+    'items.*',
 
-            DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
-            DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
-            DB::raw('COALESCE(s.total_return, 0) as total_return'),
-            DB::raw('COALESCE(s.available_stock, 0) as available_stock'),
-        ])
+    'item_packings.qty as pack_qty',
+    'item_packings.packaging_detail',
+    'item_packings.product_form',
 
+    DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
+    DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
+    DB::raw('COALESCE(s.total_return, 0) as total_return'),
+    DB::raw('COALESCE(s.available_stock, 0) as available_stock'),
+])
         ->orderBy('items.name')
         ->paginate(10);
 }
@@ -166,6 +251,24 @@ private function stockMovementItemSubQuery($fromDate = null, $toDate = null)
 
         ->groupBy('item_id');
 }
+private function onlineOrderBatchSubQuery($fromDate = null, $toDate = null)
+{
+    return DB::table('order_items')
+        ->select(
+            'batch_id',
+            DB::raw('SUM(qty) as total_online_sale')
+        )
+
+        ->when($fromDate, function ($q) use ($fromDate) {
+            $q->whereDate('created_at', '>=', $fromDate);
+        })
+
+        ->when($toDate, function ($q) use ($toDate) {
+            $q->whereDate('created_at', '<=', $toDate);
+        })
+
+        ->groupBy('batch_id');
+}
 private function stockMovementBatchSubQuery($fromDate = null, $toDate = null)
 {
     return DB::table('stock_movements')
@@ -231,19 +334,40 @@ private function getBatchStock($fromDate = null, $toDate = null)
                 $join->on('batches.id', '=', 's.batch_id');
             }
         )
+        ->leftJoinSub(
+    $this->onlineOrderBatchSubQuery($fromDate, $toDate),
+    'o',
+    function ($join) {
+        $join->on('batches.id', '=', 'o.batch_id');
+    }
+)
 
-        ->select([
-            'batches.id',
-            'batches.item_id',
-            'batches.batch_code',
-            'batches.expiry_date',
+      ->select([
+    'batches.id',
+    'batches.item_id',
+    'batches.batch_code',
+    'batches.expiry_date',
 
-            DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
-            DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
-            DB::raw('COALESCE(s.total_return, 0) as total_return'),
-            DB::raw('COALESCE(s.available_stock, 0) as available_stock'),
-        ])
+    // VERY IMPORTANT
+    'batches.stock',
+    'batches.loose_stock',
+    'batches.mrp',
+    'batches.ptr',
+    'batches.selling_price',
 
+    DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
+    DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
+    DB::raw('COALESCE(o.total_online_sale, 0) as total_online_sale'),
+    DB::raw('COALESCE(s.total_return, 0) as total_return'),
+DB::raw("
+(
+    COALESCE(s.total_purchase, 0)
+    - COALESCE(s.total_sale, 0)
+    - COALESCE(o.total_online_sale, 0)
+    + COALESCE(s.total_return, 0)
+) as available_stock
+"),
+])
         ->orderBy('batches.expiry_date')
         ->get()
         ->groupBy('item_id');
@@ -259,8 +383,15 @@ private function getBatchStock($fromDate = null, $toDate = null)
 public function show($itemId)
 {
     $item = DB::table('items')
-        ->where('id', $itemId)
-        ->first();
+    ->leftJoin('item_packings', 'items.id', '=', 'item_packings.item_id')
+    ->where('items.id', $itemId)
+    ->select(
+        'items.*',
+        'item_packings.qty as pack_qty',
+        'item_packings.packaging_detail',
+        'item_packings.product_form'
+    )
+    ->first();
 
     /*
     |--------------------------------------------------------------------------
@@ -269,6 +400,7 @@ public function show($itemId)
     */
 
     $summary = DB::table('stock_movements')
+    
     ->where('item_id', $itemId)
     ->selectRaw("
         SUM(
@@ -302,63 +434,148 @@ public function show($itemId)
         SUM(quantity) as available_stock
     ")
     ->first();
+$onlineOrderSold = DB::table('order_items')
+    ->where('item_id', $itemId)
+    ->selectRaw('SUM(qty) as total_online_sale')
+    ->first();
+$totalPurchase = $summary->total_purchase ?? 0;
+$totalReturn = $summary->total_return ?? 0;
 
-    $totalPurchase = $summary->total_purchase ?? 0;
-    $totalReturn = $summary->total_return ?? 0;
-    $totalSold = $summary->total_sold ?? 0;
-    $available = $summary->available_stock ?? 0;
+$totalOfflineSold = $summary->total_sold ?? 0;
+$totalOnlineSold = $onlineOrderSold->total_online_sale ?? 0;
 
+$totalSold = $totalOfflineSold + $totalOnlineSold;
+
+$totalAvailableStrip =
+$totalPurchase
+- $totalOfflineSold
+- $totalOnlineSold
++ $totalReturn;
+
+$totalAvailableLoose = DB::table('batches')
+    ->where('item_id', $itemId)
+    ->sum('loose_stock');
     /*
     |--------------------------------------------------------------------------
     | Batch-wise stock
     |--------------------------------------------------------------------------
     */
+$batches = DB::table('batches')
+    ->where('batches.item_id', $itemId)
+    ->leftJoin('item_packings', 'batches.item_id', '=', 'item_packings.item_id')
 
-    $batches = DB::table('batches')
-        ->where('batches.item_id', $itemId)
+    ->leftJoinSub(
+        $this->stockMovementBatchSubQuery(),
+        's',
+        function ($join) {
+            $join->on('batches.id', '=', 's.batch_id');
+        }
+    )
 
-        ->leftJoinSub(
-            $this->stockMovementBatchSubQuery(),
-            's',
-            function ($join) {
-                $join->on('batches.id', '=', 's.batch_id');
-            }
-        )
+    ->leftJoinSub(
+        $this->onlineOrderBatchSubQuery(),
+        'o',
+        function ($join) {
+            $join->on('batches.id', '=', 'o.batch_id');
+        }
+    )
 
-        ->select([
-            'batches.batch_code',
-            'batches.expiry_date',
+   ->select([
+    'batches.id',
+    'batches.item_id',
+    'batches.batch_code',
+    'batches.expiry_date',
 
-            DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
-DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
-            DB::raw('COALESCE(s.total_return, 0) as total_return'),
-            DB::raw('COALESCE(s.available_stock, 0) as available_stock'),
-        ])
+    'batches.stock',
+    'batches.loose_stock',
+    'batches.mrp',
+    'batches.ptr',
+    'batches.selling_price',
 
-        ->orderBy('batches.expiry_date')
-        ->get();
+    DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
+    DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
+    DB::raw('COALESCE(o.total_online_sale, 0) as total_online_sale'),
+    DB::raw('COALESCE(s.total_return, 0) as total_return'),
 
-    /*
+DB::raw('
+(
+    COALESCE(s.total_purchase, 0)
+    - COALESCE(s.total_sale, 0)
+    - COALESCE(o.total_online_sale, 0)
+    + COALESCE(s.total_return, 0)
+) as available_stock
+')
+])
+
+    ->orderBy('batches.expiry_date')
+    ->get();    /*
     |--------------------------------------------------------------------------
     | Purchase History
     |--------------------------------------------------------------------------
     */
 
-  $purchases = DB::table('stock_movements')
-    ->join('batches', 'batches.id', '=', 'stock_movements.batch_id')
-    ->where('stock_movements.item_id', $itemId)
-    ->where('stock_movements.type', 'purchase')
+ $purchases = DB::table('purchase_items')
+    ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+    ->leftJoin('batches', 'batches.id', '=', 'purchase_items.batch_id')
+    ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+    ->leftJoin('item_packings', 'item_packings.item_id', '=', 'purchase_items.item_id')
+
+    ->where('purchase_items.item_id', $itemId)
+->select([
+    'purchase_items.id',
+    'purchase_items.quantity',
+    'purchase_items.free_quantity',
+    
+
+    DB::raw('0 as returned_quantity'),
+
+    'purchase_items.ptr',
+    'purchase_items.mrp',
+
+    'purchase_items.gst_percent',
+    'purchase_items.gst_amount',
+
+    'purchase_items.discount_percent',
+    'purchase_items.discount_amount',
+
+    'purchase_items.taxable_amount',
+    'purchase_items.total_amount',
+
+    'purchases.invoice_number as purchase_bill_number',
+    'purchases.created_at',
+
+    'suppliers.name as supplier_name',
+
+    'batches.batch_code as purchase_batch_code',
+    'batches.expiry_date',
+    'item_packings.packaging_detail',
+'item_packings.product_form',
+])
+    ->orderBy('purchases.created_at', 'desc')
+    ->get();  
+    
+    $purchaseReturns = DB::table('purchase_return_items')
+    ->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
+    ->leftJoin('batches', 'batches.id', '=', 'purchase_return_items.batch_id')
+    ->leftJoin('suppliers', 'suppliers.id', '=', 'purchase_returns.supplier_id')
+
+    ->where('purchase_return_items.item_id', $itemId)
 
     ->select([
-        'stock_movements.quantity',
-        'stock_movements.created_at',
+        'purchase_return_items.id',
+        'purchase_return_items.quantity',
+        'purchase_return_items.created_at',
+
         'batches.batch_code',
 
-        DB::raw('0 as free_quantity'),
-        DB::raw('0 as returned_quantity'),
+        'purchase_returns.id as return_id',
+        'purchase_returns.total_amount',
+        'purchase_returns.return_date',
+
+        'suppliers.name as supplier_name',
     ])
 
-    ->orderBy('stock_movements.created_at', 'desc')
+    ->orderBy('purchase_return_items.created_at', 'desc')
     ->get();
     /*
     |--------------------------------------------------------------------------
@@ -366,45 +583,82 @@ DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
     |--------------------------------------------------------------------------
     */
 
-   $sales = DB::table('stock_movements')
-    ->join('batches', 'batches.id', '=', 'stock_movements.batch_id')
-    ->leftJoin('sales', 'sales.id', '=', 'stock_movements.reference_id')
+$sales = DB::table('sales_items')
+    ->join('sales', 'sales.id', '=', 'sales_items.sale_id')
+    ->join('batches', 'batches.id', '=', 'sales_items.batch_id')
     ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
     ->leftJoin('doctors', 'doctors.id', '=', 'sales.doctor_id')
 
-    ->where('stock_movements.item_id', $itemId)
-    ->where('stock_movements.type', 'sale')
+    ->where('sales_items.item_id', $itemId)
 
     ->select([
-        DB::raw('ABS(stock_movements.quantity) as qty'),
+        'sales.id as order_id',
+        'sales.bill_number',
+        'sales.created_at',
 
         'batches.batch_code',
 
-        'stock_movements.reference_id as order_id',
-        'stock_movements.created_at',
+        DB::raw('sales_items.quantity as qty'),
+        'sales_items.sale_type',
+'sales_items.unit_qty',
+'sales_items.selling_price',
 
-        'sales.bill_number',
-       DB::raw("'Cash' as payment_type"),
-DB::raw("0 as net_amount"),
-DB::raw("'Completed' as status"),
+        DB::raw('(sales_items.quantity * sales_items.selling_price) as net_amount'),
+
+        DB::raw("'Cash' as payment_type"),
+        DB::raw("'Completed' as status"),
+
         'customers.name as customer_name',
-    DB::raw("NULL as customer_mobile"),
-DB::raw("NULL as customer_email"),
-DB::raw("NULL as customer_address"),
+
+        DB::raw("NULL as customer_mobile"),
+        DB::raw("NULL as customer_email"),
+        DB::raw("NULL as customer_address"),
+
         'doctors.name as doctor_name',
     ])
 
-    ->orderBy('stock_movements.created_at', 'desc')
+    ->orderBy('sales.created_at', 'desc')
     ->get();
- return view('stock.show', compact(
+    $onlineOrders = DB::table('order_items')
+    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+    ->join('batches', 'batches.id', '=', 'order_items.batch_id')
+    ->leftJoin('users', 'users.id', '=', 'orders.user_id')
+
+    ->where('order_items.item_id', $itemId)
+
+    ->select([
+        'orders.id as order_id',
+        'orders.created_at',
+        'orders.status',
+        'orders.payment_mode',
+        'orders.total',
+
+        'order_items.qty',
+        'batches.batch_code',
+
+        'users.name as customer_name',
+        'users.email as customer_email',
+DB::raw("NULL as customer_mobile"),
+        DB::raw("NULL as doctor_name"),
+        DB::raw("NULL as customer_address"),
+        DB::raw("NULL as bill_number"),
+    ])
+
+    ->orderBy('orders.created_at', 'desc')
+    ->get();
+return view('stock.show', compact(
     'item',
     'totalPurchase',
     'totalReturn',
     'totalSold',
-    'available',
+    'totalAvailableStrip',
+    'totalAvailableLoose',
     'batches',
     'purchases',
-    'sales'
+    'purchaseReturns',
+    'sales',
+    'onlineOrders'
 ));
+
 }
 }

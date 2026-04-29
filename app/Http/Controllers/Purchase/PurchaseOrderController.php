@@ -11,6 +11,8 @@ use App\Models\Purchase\PurchaseOrder;
 use App\Models\Purchase\PurchaseOrderItem;
 use App\Models\Supplier;
 use App\Models\Item;
+ use Carbon\Carbon;
+
 use App\Models\SupplierItemCatalog;
 use Illuminate\Support\Str;
 
@@ -109,10 +111,13 @@ public function create(Request $request)
     */
  public function getItemSuppliers(Request $request)
 {
-    $data = SupplierItemCatalog::with(['supplier','item'])
-        ->where('item_id', $request->item_id)
-        ->where('is_active', 1)
-        ->get();
+
+$data = SupplierItemCatalog::with(['supplier','item'])
+    ->where('item_id', $request->item_id)
+    ->where('is_active', 1)
+    ->where('current_stock', '>', 0)
+    ->whereDate('expiry_date', '>', Carbon::today())
+    ->get();
 
     return response()->json(
         $data->map(function ($catalog) {
@@ -165,8 +170,10 @@ public function getSupplierItems($supplierId)
 {
     $data = SupplierItemCatalog::with(['item'])
         ->select('*') // 🔥 ADD THIS
-        ->where('supplier_id', $supplierId)
-        ->where('is_active', 1)
+  ->where('supplier_id', $supplierId)
+->where('is_active', 1)
+->where('current_stock', '>', 0)
+->whereDate('expiry_date', '>', Carbon::today())
         ->whereNotNull('item_id')
         ->get();
 
@@ -687,25 +694,43 @@ public function publishSale($id)
         |--------------------------------------------------------------------------
         */
 
-        foreach ($order->items as $poItem) {
+     foreach ($order->items as $poItem) {
 
-            if (!$poItem->item_id) {
-                throw new \Exception(
-                    'Item ID missing in PO Item ID: ' . $poItem->id
-                );
-            }
+    if (!$poItem->item_id) {
+        throw new \Exception(
+            'Item ID missing in PO Item ID: ' . $poItem->id
+        );
+    }
 
-            $catalog = \App\Models\SupplierItemCatalog::with('item')
-                ->find($poItem->supplier_item_catalog_id);
+    $catalog = \App\Models\SupplierItemCatalog::with('item')
+        ->find($poItem->supplier_item_catalog_id);
 
-            if (!$catalog) {
-                throw new \Exception(
-                    'Supplier catalog not found for Item ID: ' . $poItem->item_id
-                );
-            }
+    if (!$catalog) {
+        throw new \Exception(
+            'Supplier catalog not found for Item ID: ' . $poItem->item_id
+        );
+    }
 
-           $qty = (float) ($poItem->quantity ?? 0);
+    /*
+    |------------------------------------------------------------------
+    | EXPIRED + OUT OF STOCK VALIDATION
+    |------------------------------------------------------------------
+    */
 
+    if (
+        (float) $catalog->current_stock <= 0 ||
+        (
+            $catalog->expiry_date &&
+            \Carbon\Carbon::parse($catalog->expiry_date)->isPast()
+        )
+    ) {
+        throw new \Exception(
+            'Expired or Out of Stock item cannot be published for Item ID: '
+            . $poItem->item_id
+        );
+    }
+
+    $qty = (float) ($poItem->quantity ?? 0);
 /*
 |--------------------------------------------------------------------------
 | PTR Logic

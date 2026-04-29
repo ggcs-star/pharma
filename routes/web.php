@@ -119,7 +119,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [PurchaseReturnController::class, 'create'])->name('create');
         Route::get('/get-purchase-item/{id}', [PurchaseReturnController::class, 'getPurchaseItem']);
         Route::post('/store', [PurchaseReturnController::class, 'store'])->name('store');
-
+Route::get('/{return}', [PurchaseReturnController::class, 'show'])->name('show');
         Route::delete('/{return}', [PurchaseReturnController::class, 'destroy'])->name('delete');
 
     });
@@ -161,17 +161,11 @@ Route::get('/get-supplier-by-code/{code}', function ($code) {
 });
 Route::get('/api/item-details/{id}', function ($id) {
 
-    $item = \App\Models\Item::with('packType')->find($id);
+    $item = \App\Models\Item::with('packings')->find($id);
 
     if (!$item) {
         return response()->json([]);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Get nearest valid batch first (FIFO)
-    |--------------------------------------------------------------------------
-    */
 
     $batch = \App\Models\Batch::where('item_id', $id)
         ->whereDate('expiry_date', '>=', now())
@@ -180,17 +174,7 @@ Route::get('/api/item-details/{id}', function ($id) {
 
     $gstPercent = 0;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Direct batch relation check
-    |--------------------------------------------------------------------------
-    */
-
     if ($batch) {
-
-        // IMPORTANT:
-        // your DB uses batch_id in purchase_items
-
         $purchaseItem = \App\Models\PurchaseItem::where('batch_id', $batch->id)
             ->first();
 
@@ -199,12 +183,22 @@ Route::get('/api/item-details/{id}', function ($id) {
         }
     }
 
+    $packing = optional(
+        $item->packings->first()
+    )->packaging_detail ?? '';
+
+    $conversionFactor = 1;
+
+    if (preg_match('/strip of (\d+)/i', $packing, $matches)) {
+        $conversionFactor = (int) $matches[1];
+    }
+
     return response()->json([
-        'pack_type' => $item->packType->name ?? '',
+        'pack_type' => $packing,
         'gst' => $gstPercent,
         'unit' => $item->unit,
         'hsn' => $item->hsn_code,
-        'conversion_factor' => $item->conversion_factor ?? 1,
+        'conversion_factor' => $conversionFactor,
     ]);
 });
 Route::get('/api/get-item-full/{id}', function ($id) {
@@ -348,6 +342,7 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::prefix('purchase')->group(function () {
 
+    
         Route::get('/', [PurchaseController::class, 'index'])
             ->name('purchase.index');
 

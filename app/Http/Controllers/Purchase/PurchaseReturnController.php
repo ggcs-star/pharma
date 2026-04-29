@@ -118,12 +118,23 @@ class PurchaseReturnController extends Controller
         }
     }
 
+public function show($id)
+{
+    $return = PurchaseReturn::with([
+        'supplier',
+        'purchase',
+        'items.item',
+        'items.batch'
+    ])->findOrFail($id);
 
+    return view('purchase_returns.show', compact('return'));
+}
     /*
     |----------------------------------------------------------
     | DELETE RETURN 🔥
     |----------------------------------------------------------
     */
+    
     public function destroy(PurchaseReturn $return)
     {
         \DB::beginTransaction();
