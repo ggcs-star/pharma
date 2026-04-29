@@ -534,19 +534,7 @@
                                                    name="items[{{ $index }}][item_id]"
                                                    value="{{ $poItem->item_id }}">
                                         </td>
-                                        <td>
-                                            <input type="number"
-                                                   step="0.01"
-                                                   min="0.01"
-                                                   required
-                                                   class="form-control final-mrp-input"
-                                                   name="items[{{ $index }}][final_mrp]"
-                                                   placeholder="Enter MRP"
-                                                   data-order-id="{{ $order->id }}"
-                                                   data-purchase-total="{{ $order->net_amount ?? 0 }}">
-                                        </td>
-                                        <td>
-@php
+                                        @php
     $packSize = optional($poItem->supplierItemCatalog)->pack_size
                 ?? $poItem->item->conversion_factor
                 ?? 1;
@@ -568,6 +556,22 @@
     }
 @endphp
 
+
+                                        <td>
+                                            <input type="number"
+                                                   step="0.01"
+                                                   min="0.01"
+                                                   required
+                                                   class="form-control final-mrp-input"
+                                                   name="items[{{ $index }}][final_mrp]"
+                                                   placeholder="Enter MRP"
+                                                   data-order-id="{{ $order->id }}"
+                                                   data-purchase-total="{{ $order->net_amount ?? 0 }}">
+                                                   <input type="hidden"
+       name="items[{{ $index }}][conversion_factor]"
+       value="{{ $packSize }}">
+                                        </td>
+                                        <td>
 <div class="fw-semibold text-primary small">
     📦 1 {{ $packType }} of {{ $packSize }} {{ $unitType }}
 </div>
