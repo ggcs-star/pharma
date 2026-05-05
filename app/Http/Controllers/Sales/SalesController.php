@@ -390,78 +390,51 @@ public function store(Request $request)
             |--------------------------------------------------------------------------
             */
 
-            if ($saleType === 'strip') {
+          if ($saleType === 'strip') {
 
-                if ($batch->stock < $qty) {
-                    throw new \Exception(
-                        "Stock not available for {$item->name}"
-                    );
-                }
+    if ($batch->stock < $qty) {
+        throw new \Exception("Stock not available for {$item->name}");
+    }
 
-                /*
-                | selling_price = per strip price
-                */
+    $base = $qty * $row['selling_price'];
 
-                $base = $qty * $row['selling_price'];
+    $batch->reduceStock($qty);
 
-                /*
-                | Reduce strip stock
-                */
+    $movementUnit = 'Strip';
+    $unitQty = $qty;
+}
 
-                $batch->reduceStock($qty);
+/* =========================
+   LOOSE SALE
+========================= */
+else {
 
-                $movementUnit = 'Strip';
-                $unitQty = $qty;
-            }
+    $packSize = $item->pack_qty ?? 10;
+    $looseQty = (int) $qty;
 
-            /*
-            |--------------------------------------------------------------------------
-            | LOOSE TABLET SALE
-            |--------------------------------------------------------------------------
-            */
+    if ($batch->loose_stock < $looseQty) {
 
-            else {
+        $required = $looseQty - $batch->loose_stock;
 
-                if ($batch->loose_stock < $qty) {
-                    throw new \Exception(
-                        "Loose stock not available for {$item->name}"
-                    );
-                }
+        $stripToBreak = ceil($required / $packSize);
 
-                /*
-                |--------------------------------------------------------------------------
-                | IMPORTANT FIX
-                |--------------------------------------------------------------------------
-                | Frontend already sends per-tablet price
-                | Example:
-                | strip price = 44
-                | 1 strip = 10 tablets
-                | frontend sends = 4.40
-                |
-                | so DO NOT divide again
-                |--------------------------------------------------------------------------
-                */
+        if ($batch->stock < $stripToBreak) {
+            throw new \Exception("Insufficient stock for {$item->name}");
+        }
 
-                $perTabletPrice = $row['selling_price'];
+        $batch->stock -= $stripToBreak;
+        $batch->loose_stock += $stripToBreak * $packSize;
+    }
 
-                /*
-                | Final base amount
-                | Example:
-                | 10 tablets × 4.40 = 44
-                */
+    $batch->loose_stock -= $looseQty;
 
-                $base = $perTabletPrice * $qty;
+    $base = $row['selling_price'] * $looseQty;
 
-                /*
-                | Reduce loose stock
-                */
-
-                $batch->reduceLooseStock($qty);
-
-                $movementUnit = 'Tablet';
-                $unitQty = $qty;
-            }
-
+    $movementUnit = 'Tablet';
+    $unitQty = $looseQty;
+    
+}
+$batch->save(); 
          /*
 |--------------------------------------------------------------------------
 | GST CALCULATION

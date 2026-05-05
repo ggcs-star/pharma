@@ -47,7 +47,7 @@
     </div>
 
     @if($sale)
-    <form method="POST" action="{{ route('sales_return.store') }}" id="returnForm">
+    <form method="POST" action="{{ route('sales.return.store') }}" id="returnForm">
         @csrf
 
         <input type="hidden" name="sale_id" value="{{ $sale->id }}">

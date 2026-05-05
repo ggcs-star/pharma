@@ -809,11 +809,7 @@ if ($mrp <= 0) {
             |--------------------------------------------------------------------------
             */
 
-            $conversionFactor = (int) (
-                optional($catalog->item)->conversion_factor ?: 10
-            );
-
-            $looseStock = $qty * $conversionFactor;
+         
 
             /*
             |--------------------------------------------------------------------------
@@ -831,12 +827,8 @@ if ($mrp <= 0) {
                 'expiry_date' => $catalog->expiry_date
                     ?? now()->addYear(),
 
-                // strip stock
-                'stock' => $qty,
-
-                // tablet stock
-                'loose_stock' => $looseStock,
-
+             'stock' => $qty,
+'loose_stock' => 0,
                 'mrp' => $mrp,
                 'ptr' => $rate,
                 'selling_price' => $mrp,
