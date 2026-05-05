@@ -177,6 +177,27 @@
         border-collapse: separate;
         border-spacing: 0 12px;
     }
+    .custom-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #198754;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    transform: translateX(120%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 9999;
+}
+
+.custom-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
     .items-table thead th {
         background: #f8fafd;
         font-weight: 700;
@@ -570,19 +591,28 @@ await selectSupplier(supplier, card);                            });
             orderItems = [];
             renderOrderItemsTable();
             
-            Swal.fire({
-                icon: 'success',
-                title: 'Supplier Selected',
-                text: `Now you can add multiple items from ${supplierName}`,
-                timer: 1500,
-                showConfirmButton: false
-            });
+           showRightToast(`Supplier "${supplierName}" selected`);
         } catch (err) {
             console.error('Catalog error:', err);
             Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to load supplier items' });
         }
     }
-    
+    function showRightToast(message) {
+    let toast = document.createElement('div');
+    toast.className = 'custom-toast';
+    toast.innerText = message;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 50);
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
     function renderCatalogGrid() {
         const grid = document.getElementById('supplierCatalogGrid');
         if (!grid) return;
@@ -682,15 +712,7 @@ const itemData = supplierCatalogItems[index];          const addItem = () => add
 
         renderOrderItemsTable();
 
-        Swal.fire({
-            icon: 'success',
-            title: 'Quantity Updated',
-            text: 'Same item already exists, quantity increased',
-            timer: 1000,
-            showConfirmButton: false,
-            toast: true,
-            position: 'top-end'
-        });
+        showRightToast("Quantity increased (same item)");
 
         return;
     }
@@ -823,11 +845,7 @@ let newQty = parseFloat(this.value) || 1;
 const maxStock = orderItems[rowIdx].stock || 0;
 
 if (newQty > maxStock) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Out of Stock',
-        text: `Only ${maxStock} available`
-    });
+ showRightToast(`Only ${maxStock} stock available`);
     newQty = maxStock;
     this.value = maxStock;
 }
@@ -870,13 +888,7 @@ renderOrderItemsTable();
         document.getElementById('itemsSection').style.display = 'none';
         document.querySelectorAll('.supplier-select-card').forEach(c => c.classList.remove('selected-supplier'));
         
-        Swal.fire({
-            icon: 'info',
-            title: 'Supplier Changed',
-            text: 'Please select another supplier for this medicine',
-            timer: 1500,
-            showConfirmButton: false
-        });
+     showRightToast("Supplier changed, select again");
     }
     
     document.getElementById('purchaseForm')?.addEventListener('submit', function(e) {
