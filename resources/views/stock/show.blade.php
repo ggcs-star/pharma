@@ -33,23 +33,17 @@
                             </div>
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="text-muted mb-1">Total Purchased</h6>
-@php
-    $packSize = $item->pack_qty ?? 1;
 
-    $totalLoose =
-        ($finalAvailableStrip * $packSize + $finalAvailableLoose)
-        +
-        ($finalSoldStrip * $packSize + $finalSoldLoose);
-
-    $totalPurchaseStrip = intdiv($totalLoose, $packSize);
-    $totalPurchaseLoose = $totalLoose % $packSize;
-@endphp
 
 <h3 class="mb-0">
-{{ $totalPurchaseStrip }} Strip
+@if(in_array(strtolower($item->product_form), ['tablet','capsule']))
 
-@if($totalPurchaseLoose > 0)
-    + {{ $totalPurchaseLoose }} Tablet
+    {{ $totalPurchased ?? 0 }} Strip
+
+@else
+
+    {{ $totalPurchased ?? 0 }} {{ $item->product_form ?? 'Unit' }}
+
 @endif
 </h3>                              <small class="text-muted">units</small>
                             </div>
@@ -68,14 +62,23 @@
                                 </div>
                             </div>
                             <div class="flex-grow-1 ms-3">
-                                <h6 class="text-muted mb-1">Total Sold</h6>
-<h3 class="mb-0">
-    {{ $finalSoldStrip }} Strip
+                               <h6 class="text-muted mb-1">Total Sold</h6>
 
-    @if($finalSoldLoose > 0)
+<h3 class="mb-0">
+@if(in_array(strtolower($item->product_form), ['tablet','capsule']))
+
+    {{ $finalSoldStrip ?? 0 }} Strip
+
+    @if(($finalSoldLoose ?? 0) > 0)
         + {{ $finalSoldLoose }} Tablet
     @endif
-</h3>                            <small class="text-muted">units</small>
+
+@else
+
+    {{ $finalSoldStrip ?? 0 }} {{ $item->product_form ?? 'Unit' }}
+
+@endif
+</h3> <small class="text-muted">units</small>
                             </div>
                         </div>
                     </div>
@@ -117,10 +120,18 @@ $availableTotal = $finalAvailableStrip ?? 0;
 @endphp
 
 <h3 class="mb-0 text-{{ $stockClass }}">
- {{ $finalAvailableStrip }} Strip
+@if(in_array(strtolower($item->product_form), ['tablet','capsule']))
 
-@if($finalAvailableLoose > 0)
-    + {{ $finalAvailableLoose }} Tablet
+    {{ $finalAvailableStrip }} Strip
+
+    @if($finalAvailableLoose > 0)
+        + {{ $finalAvailableLoose }} Tablet
+    @endif
+
+@else
+
+    {{ $finalAvailableUnit }} {{ $item->product_form ?? 'Unit' }}
+
 @endif
 </h3>
 @if(!empty($item->packaging_detail))
@@ -223,10 +234,18 @@ $availableStock = ($strip * $packSize) + $loose;if ($availableStock <= 0) {
     $finalLoose = $totalLoose % $packSize;
 @endphp
 
-{{ $finalStrip }} Strip
+@if(in_array(strtolower($item->product_form), ['tablet','capsule']))
 
-@if($finalLoose > 0)
-    + {{ $finalLoose }} Tablet
+    {{ $finalStrip }} Strip
+
+    @if($finalLoose > 0)
+        + {{ $finalLoose }} Tablet
+    @endif
+
+@else
+
+    {{ $batch->available_stock }} {{ $item->product_form ?? 'Unit' }}
+
 @endif
 </span>                                    </td>
                                     <td class="text-center pe-4">
