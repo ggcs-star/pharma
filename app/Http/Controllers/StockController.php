@@ -449,7 +449,7 @@ $onlineOrderSold = DB::table('order_items')
 
 
 $totalReturn   = $summary->total_return ?? 0;
-
+$totalPurchased = $summary->total_purchase ?? 0;
 /*
 |--------------------------------------------------------------------------
 | Get valid batches only (exclude expired)
@@ -503,23 +503,35 @@ $batchesForStock = DB::table('batches')
 | Final Available Stock
 |--------------------------------------------------------------------------
 */
+$isStripBased = in_array(strtolower($item->product_form), ['tablet','capsule']);
 
-$packSize = $item->pack_qty ?? 10;
+$packSize = $isStripBased ? ($item->pack_qty ?? 10) : 1;
 
-$totalLooseStock = 0;
+$totalQty = 0;
 
 foreach ($batchesForStock as $batch) {
 
-    $strip = (int) ($batch->stock ?? 0);
-    $loose = (int) ($batch->loose_stock ?? 0);
+    if ($isStripBased) {
+        $strip = (int) ($batch->stock ?? 0);
+        $loose = (int) ($batch->loose_stock ?? 0);
 
-    // ✅ convert everything to loose
-    $totalLooseStock += ($strip * $packSize) + $loose;
+        $totalQty += ($strip * $packSize) + $loose;
+    } else {
+        $totalQty += (int) ($batch->available_stock ?? 0);
+    }
 }
 
-// ✅ normalize back
-$finalAvailableStrip = intdiv($totalLooseStock, $packSize);
-$finalAvailableLoose = $totalLooseStock % $packSize;
+// ✅ VERY IMPORTANT (fixes your error)
+$finalAvailableStrip = 0;
+$finalAvailableLoose = 0;
+$finalAvailableUnit = 0;
+
+if ($isStripBased) {
+    $finalAvailableStrip = intdiv($totalQty, $packSize);
+    $finalAvailableLoose = $totalQty % $packSize;
+} else {
+    $finalAvailableUnit = $totalQty;
+}
 /*
 |--------------------------------------------------------------------------
 | Sold = Purchase - Available + Return
@@ -753,7 +765,7 @@ DB::raw("NULL as customer_mobile"),
 return view('stock.show', compact(
     'item',
     'totalReturn',
-
+'totalPurchased',
     'totalSoldStrip',
     'totalSoldLoose',
 
@@ -762,6 +774,7 @@ return view('stock.show', compact(
 
     'finalAvailableStrip',
     'finalAvailableLoose',
+     'finalAvailableUnit',
 
     'batches',
     'purchases',
