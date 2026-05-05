@@ -292,8 +292,7 @@ public function store(Request $request)
                 $itemMaster->conversion_factor ?? 10
             );
 
-            // loose tablet qty
-            $looseQty = $totalQty * $conversionFactor;
+        
 
             /*
             |--------------------------------------------------------------------------
@@ -316,16 +315,12 @@ public function store(Request $request)
                 */
 
                 // strip stock
-                $batch->increment('stock', $totalQty);
+               $batch->increment('stock', $totalQty);
 
-                // loose stock
-                $batch->increment('loose_stock', $looseQty);
-
-                $batch->mrp = $mrp;
-                $batch->ptr = $rate;
-                $batch->selling_price = $mrp;
-                $batch->save();
-
+$batch->mrp = $mrp;
+$batch->ptr = $rate;
+$batch->selling_price = $mrp;
+$batch->save();
             } else {
 
                 /*
@@ -343,8 +338,7 @@ public function store(Request $request)
                     'stock' => $totalQty,
 
                     // loose tablet stock
-                    'loose_stock' => $looseQty,
-
+'loose_stock' => 0,
                     'mrp' => $mrp,
                     'ptr' => $rate,
                     'selling_price' => $mrp,

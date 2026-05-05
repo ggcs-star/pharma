@@ -33,8 +33,25 @@
                             </div>
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="text-muted mb-1">Total Purchased</h6>
-                                <h3 class="mb-0">{{ number_format($totalPurchase) }}</h3>
-                                <small class="text-muted">units</small>
+@php
+    $packSize = $item->pack_qty ?? 1;
+
+    $totalLoose =
+        ($finalAvailableStrip * $packSize + $finalAvailableLoose)
+        +
+        ($finalSoldStrip * $packSize + $finalSoldLoose);
+
+    $totalPurchaseStrip = intdiv($totalLoose, $packSize);
+    $totalPurchaseLoose = $totalLoose % $packSize;
+@endphp
+
+<h3 class="mb-0">
+{{ $totalPurchaseStrip }} Strip
+
+@if($totalPurchaseLoose > 0)
+    + {{ $totalPurchaseLoose }} Tablet
+@endif
+</h3>                              <small class="text-muted">units</small>
                             </div>
                         </div>
                     </div>
@@ -52,8 +69,13 @@
                             </div>
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="text-muted mb-1">Total Sold</h6>
-                                <h3 class="mb-0">{{ number_format($totalSold) }}</h3>
-                                <small class="text-muted">units</small>
+<h3 class="mb-0">
+    {{ $finalSoldStrip }} Strip
+
+    @if($finalSoldLoose > 0)
+        + {{ $finalSoldLoose }} Tablet
+    @endif
+</h3>                            <small class="text-muted">units</small>
                             </div>
                         </div>
                     </div>
@@ -62,8 +84,7 @@
 
             <div class="col-md-4">
        @php
-    $availableTotal = $totalAvailableStrip ?? 0;
-
+$availableTotal = $finalAvailableStrip ?? 0;
     $stockClass = $availableTotal > 10
         ? 'success'
         : ($availableTotal > 0 ? 'warning' : 'danger');
@@ -93,15 +114,14 @@
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="text-muted mb-1">Available Stock</h6>
                            @php
-$mainUnit = $item->packaging_detail
 @endphp
 
 <h3 class="mb-0 text-{{ $stockClass }}">
-    {{ number_format($totalAvailableStrip) }} {{ $mainUnit }}
+ {{ $finalAvailableStrip }} Strip
 
-    @if($totalAvailableLoose > 0)
-        + {{ number_format($totalAvailableLoose) }} Loose
-    @endif
+@if($finalAvailableLoose > 0)
+    + {{ $finalAvailableLoose }} Tablet
+@endif
 </h3>
 @if(!empty($item->packaging_detail))
     <small class="text-muted d-block mt-1">
@@ -142,9 +162,12 @@ $mainUnit = $item->packaging_detail
                                     $expiryDate = \Carbon\Carbon::parse($batch->expiry_date);
                                     $isExpired = $expiryDate->isPast();
                                     $isNearExpiry = $expiryDate->diffInDays(now()) <= 30 && !$isExpired;
-$availableStock = trim($batch->available_stock ?? '');
+$packSize = $item->pack_qty ?? 10;
 
-if ($availableStock == '' || $availableStock == '0 Strip') {
+$strip = (int) ($batch->stock ?? 0);
+$loose = (int) ($batch->loose_stock ?? 0);
+
+$availableStock = ($strip * $packSize) + $loose;if ($availableStock <= 0) {
                                         $badgeClass = 'secondary';
                                         $statusText = 'Out of Stock';
                                     } elseif ($isExpired) {
@@ -188,7 +211,23 @@ if ($availableStock == '' || $availableStock == '0 Strip') {
 </td>
                                     <td class="text-center">
 <span class="fw-bold">
-    {{ $batch->available_stock }}
+@php
+    $packSize = $item->pack_qty ?? 10;
+
+    $strip = (int) ($batch->stock ?? 0);
+    $loose = (int) ($batch->loose_stock ?? 0);
+
+    $totalLoose = ($strip * $packSize) + $loose;
+
+    $finalStrip = intdiv($totalLoose, $packSize);
+    $finalLoose = $totalLoose % $packSize;
+@endphp
+
+{{ $finalStrip }} Strip
+
+@if($finalLoose > 0)
+    + {{ $finalLoose }} Tablet
+@endif
 </span>                                    </td>
                                     <td class="text-center pe-4">
                                         <span class="badge bg-{{ $badgeClass }} bg-opacity-10 text-{{ $badgeClass }} px-3 py-2">

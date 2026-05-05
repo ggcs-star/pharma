@@ -15,13 +15,20 @@ class MarketplaceController extends Controller
         | Base Query
         |--------------------------------------------------------------------------
         */
+$query = SupplierItemCatalog::with([
+        'supplier',
+        'item'
+    ])
+    ->where('is_active', 1)
+    ->whereNotNull('item_id');
 
-        $query = SupplierItemCatalog::with([
-                'supplier',
-                'item'
-            ])
-            ->where('is_active', 1)
-            ->whereNotNull('item_id');
+// ✅ ADD THIS BLOCK
+$query->where(function ($q) {
+    $q->whereNull('expiry_date')
+      ->orWhereDate('expiry_date', '>=', now());
+});
+
+$query->where('current_stock', '>', 0);
 
         /*
         |--------------------------------------------------------------------------
