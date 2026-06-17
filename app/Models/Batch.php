@@ -11,13 +11,16 @@ class Batch extends Model
         'batch_code',
         'expiry_date',
         'stock',
-        'loose_stock', // 🔥 ADD THIS
+        'loose_stock',
         'mrp',
         'ptr',
         'discount',
         'margin',
         'markup',
-        'selling_price'
+
+        // 🔥 NEW PRICING
+        'offline_price',
+        'online_price',
     ];
 
     /*
@@ -29,13 +32,16 @@ class Batch extends Model
     protected $casts = [
         'expiry_date' => 'date',
         'stock' => 'decimal:2',
-        'loose_stock' => 'integer', // 🔥 ADD THIS
+        'loose_stock' => 'integer',
         'mrp' => 'decimal:2',
         'ptr' => 'decimal:2',
         'discount' => 'decimal:2',
         'margin' => 'decimal:2',
         'markup' => 'decimal:2',
-        'selling_price' => 'decimal:2',
+
+        // 🔥 NEW
+        'offline_price' => 'decimal:2',
+        'online_price' => 'decimal:2',
     ];
 
     /*
@@ -71,31 +77,23 @@ class Batch extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Stock Methods (SAFE 🔥)
+    | Stock Methods
     |--------------------------------------------------------------------------
     */
 
     public function reduceStock($qty)
-{
-    if ($this->stock < $qty) {
-        throw new \Exception("Insufficient stock in batch {$this->batch_code}");
+    {
+        if ($this->stock < $qty) {
+            throw new \Exception("Insufficient stock in batch {$this->batch_code}");
+        }
+
+        $this->decrement('stock', $qty);
     }
 
-    // ✅ ONLY STRIP REDUCE
-    $this->decrement('stock', $qty);
-}
-
-   public function increaseStock($qty)
-{
-    $this->increment('stock', $qty);
-}
-
-    /*
-    |--------------------------------------------------------------------------
-    | Loose Sale Methods 
-    |--------------------------------------------------------------------------
-    */
-
+    public function increaseStock($qty)
+    {
+        $this->increment('stock', $qty);
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -112,13 +110,14 @@ class Batch extends Model
     {
         return now()->diffInDays($this->expiry_date, false) <= $days;
     }
-public function isAvailable()
-{
-    return (
-        ($this->stock > 0 || $this->loose_stock > 0)
-        && !$this->isExpired()
-    );
-}
+
+    public function isAvailable()
+    {
+        return (
+            ($this->stock > 0 || $this->loose_stock > 0)
+            && !$this->isExpired()
+        );
+    }
 
     public function isLowStock($limit = 10)
     {
@@ -131,16 +130,16 @@ public function isAvailable()
     |--------------------------------------------------------------------------
     */
 
-   public function scopeAvailable($query)
-{
-    return $query
-        ->where(function ($q) {
-            $q->where('stock', '>', 0)
-              ->orWhere('loose_stock', '>', 0);
-        })
-        ->whereDate('expiry_date', '>=', now())
-        ->orderBy('expiry_date', 'asc');
-}
+    public function scopeAvailable($query)
+    {
+        return $query
+            ->where(function ($q) {
+                $q->where('stock', '>', 0)
+                  ->orWhere('loose_stock', '>', 0);
+            })
+            ->whereDate('expiry_date', '>=', now())
+            ->orderBy('expiry_date', 'asc');
+    }
 
     /*
     |--------------------------------------------------------------------------

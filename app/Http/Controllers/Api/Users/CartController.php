@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Cart;
 use App\Models\Batch;
+use App\Services\SecurityLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -14,78 +15,137 @@ class CartController extends Controller
     /* ===============================
         ADD TO CART
     =============================== */
-    public function add(Request $request)
-    {
-        $request->validate([
-            'batch_id' => 'required|exists:batches,id',
-            'qty' => 'required|numeric|min:1'
+public function add(Request $request)
+{
+$request->validate([
+'batch_id' => 'required|exists:batches,id',
+'qty' => 'required|numeric|min:1'
+]);
+
+DB::beginTransaction();
+
+try {
+
+    $batch = Batch::lockForUpdate()
+        ->findOrFail($request->batch_id);
+
+    if ($batch->expiry_date <= now()) {
+        throw new \Exception('Product expired');
+    }
+
+    if ($batch->stock < $request->qty) {
+        throw new \Exception(
+            'Only ' . $batch->stock . ' available'
+        );
+    }
+
+    $price =
+        $batch->online_price ??
+        $batch->mrp ??
+        0;
+
+    $cart = Cart::where(
+            'user_id',
+            auth()->id()
+        )
+        ->where(
+            'batch_id',
+            $batch->id
+        )
+        ->first();
+
+    if ($cart) {
+
+        $newQty =
+            $cart->qty +
+            $request->qty;
+
+        if ($batch->stock < $newQty) {
+            throw new \Exception(
+                'Max quantity: ' .
+                $batch->stock
+            );
+        }
+
+        $cart->update([
+            'qty' => $newQty,
+            'price' => $price
         ]);
 
-        DB::beginTransaction();
+        $message = 'Cart updated';
 
-        try {
-            $batch = Batch::lockForUpdate()->findOrFail($request->batch_id);
+    } else {
 
-            if ($batch->expiry_date <= now()) {
-                throw new \Exception('Product expired');
-            }
+        $cart = Cart::create([
 
-            if ($batch->stock < $request->qty) {
-                throw new \Exception('Only ' . $batch->stock . ' available');
-            }
+            'user_id' => auth()->id(),
 
-            // ✅ PRICE LOGIC
-         $price = $batch->mrp ?? 0;
+            'item_id' => $batch->item_id,
 
-            $cart = Cart::where('user_id', auth()->id())
-                ->where('batch_id', $batch->id)
-                ->first();
+            'batch_id' => $batch->id,
 
-            if ($cart) {
-                $newQty = $cart->qty + $request->qty;
+            'qty' => $request->qty,
 
-                if ($batch->stock < $newQty) {
-                    throw new \Exception('Max quantity: ' . $batch->stock);
-                }
+            'price' => $price
+        ]);
 
-                $cart->update([
-                    'qty' => $newQty,
-                    'price' => $price
-                ]);
-
-                $message = 'Cart updated';
-            } else {
-                $cart = Cart::create([
-                    'user_id' => auth()->id(),
-                    'item_id' => $batch->item_id,
-                    'batch_id' => $batch->id,
-                    'qty' => $request->qty,
-                    'price' => $price
-                ]);
-
-                $message = 'Added to cart';
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'status' => true,
-                'message' => $message,
-                'data' => $this->formatItem($cart),
-                'summary' => $this->summary()
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Cart Add Error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 400);
-        }
+        $message = 'Added to cart';
     }
+
+    DB::commit();
+
+    SecurityLogger::log(
+        $request,
+        'CART',
+        'item_added',
+        1,
+        200,
+        [
+            'cart_id' => $cart->id,
+            'item_id' => $batch->item_id,
+            'batch_id' => $batch->id,
+            'qty' => $request->qty,
+            'price' => $price,
+            'stock_after_action' => $batch->stock
+        ]
+    );
+
+    return response()->json([
+        'status' => true,
+        'message' => $message,
+        'data' => $this->formatItem($cart),
+        'summary' => $this->summary()
+    ]);
+
+} catch (\Exception $e) {
+
+    DB::rollBack();
+
+    Log::error(
+        'Cart Add Error: ' .
+        $e->getMessage()
+    );
+
+    SecurityLogger::log(
+        $request,
+        'CART',
+        'item_add_failed',
+        5,
+        400,
+        [
+            'batch_id' => $request->batch_id,
+            'qty' => $request->qty,
+            'error' => $e->getMessage()
+        ]
+    );
+
+    return response()->json([
+        'status' => false,
+        'message' => $e->getMessage()
+    ], 400);
+}
+
+}
 
     /* ===============================
         CART LIST
@@ -118,104 +178,200 @@ class CartController extends Controller
     /* ===============================
         UPDATE QTY
     =============================== */
-    public function update(Request $request)
-    {
-        $request->validate([
-            'cart_id' => 'required|exists:carts,id',
-            'qty' => 'required|numeric|min:1'
-        ]);
+public function update(Request $request)
+{
+$request->validate([
+'cart_id' => 'required|exists:carts,id',
+'qty' => 'required|numeric|min:1'
+]);
 
-        DB::beginTransaction();
+DB::beginTransaction();
 
-        try {
-            $cart = Cart::where('id', $request->cart_id)
-                ->where('user_id', auth()->id())
-                ->firstOrFail();
+try {
 
-            $batch = Batch::lockForUpdate()->findOrFail($cart->batch_id);
+    $cart = Cart::where('id', $request->cart_id)
+        ->where('user_id', auth()->id())
+        ->firstOrFail();
 
-            if ($batch->expiry_date <= now()) {
-                throw new \Exception('Product expired');
-            }
+    $batch = Batch::lockForUpdate()
+        ->findOrFail($cart->batch_id);
 
-            if ($batch->stock < $request->qty) {
-                throw new \Exception('Only ' . $batch->stock . ' available');
-            }
-
-            // ✅ PRICE SYNC
-          $price = $batch->mrp ?? 0;
-
-            $cart->update([
-                'qty' => $request->qty,
-                'price' => $price
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Quantity updated',
-                'data' => $this->formatItem($cart),
-                'summary' => $this->summary()
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Cart Update Error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 400);
-        }
+    if ($batch->expiry_date <= now()) {
+        throw new \Exception('Product expired');
     }
+
+    if ($batch->stock < $request->qty) {
+        throw new \Exception(
+            'Only ' . $batch->stock . ' available'
+        );
+    }
+
+    $price =
+        $batch->online_price ??
+        $batch->mrp ??
+        0;
+
+    $cart->update([
+        'qty' => $request->qty,
+        'price' => $price
+    ]);
+
+    DB::commit();
+
+    SecurityLogger::log(
+        $request,
+        'CART',
+        'item_updated',
+        1,
+        200,
+        [
+            'cart_id' => $cart->id,
+            'item_id' => $cart->item_id,
+            'batch_id' => $batch->id,
+            'qty' => $request->qty,
+            'price' => $price
+        ]
+    );
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Quantity updated',
+        'data' => $this->formatItem($cart),
+        'summary' => $this->summary()
+    ]);
+
+} catch (\Exception $e) {
+
+    DB::rollBack();
+
+    Log::error(
+        'Cart Update Error: ' .
+        $e->getMessage()
+    );
+
+    SecurityLogger::log(
+        $request,
+        'CART',
+        'item_update_failed',
+        5,
+        400,
+        [
+            'cart_id' => $request->cart_id,
+            'qty' => $request->qty,
+            'error' => $e->getMessage()
+        ]
+    );
+
+    return response()->json([
+        'status' => false,
+        'message' => $e->getMessage()
+    ], 400);
+}
+
+}
 
     /* ===============================
         REMOVE ITEM
     =============================== */
-    public function remove($id)
-    {
-        try {
-            $cart = Cart::where('id', $id)
-                ->where('user_id', auth()->id())
-                ->firstOrFail();
+public function remove($id, Request $request)
+{
+try {
 
-            $cart->delete();
+    $cart = Cart::where('id', $id)
+        ->where('user_id', auth()->id())
+        ->firstOrFail();
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Item removed',
-                'summary' => $this->summary()
-            ]);
+    $removedCartId = $cart->id;
+    $removedBatchId = $cart->batch_id;
+    $removedItemId = $cart->item_id;
+    $removedQty = $cart->qty;
 
-        } catch (\Exception $e) {
-            Log::error('Cart Remove Error: ' . $e->getMessage());
+    $cart->delete();
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Item not found'
-            ], 404);
-        }
-    }
+    SecurityLogger::log(
+        $request,
+        'CART',
+        'item_removed',
+        2,
+        200,
+        [
+            'cart_id' => $removedCartId,
+            'item_id' => $removedItemId,
+            'batch_id' => $removedBatchId,
+            'qty' => $removedQty
+        ]
+    );
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Item removed',
+        'summary' => $this->summary()
+    ]);
+
+} catch (\Exception $e) {
+
+    Log::error(
+        'Cart Remove Error: ' .
+        $e->getMessage()
+    );
+
+    SecurityLogger::log(
+        $request,
+        'CART',
+        'item_remove_failed',
+        5,
+        404,
+        [
+            'cart_id' => $id,
+            'error' => $e->getMessage()
+        ]
+    );
+
+    return response()->json([
+        'status' => false,
+        'message' => 'Item not found'
+    ], 404);
+}
+
+}
 
     /* ===============================
         CLEAR CART
     =============================== */
-    public function clear()
-    {
-        Cart::where('user_id', auth()->id())->delete();
+ public function clear(Request $request)
+{
+$itemCount = Cart::where(
+'user_id',
+auth()->id()
+)->count();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Cart cleared',
-            'summary' => [
-                'items' => 0,
-                'qty' => 0,
-                'total' => 0
-            ]
-        ]);
-    }
+Cart::where(
+    'user_id',
+    auth()->id()
+)->delete();
+
+SecurityLogger::log(
+    $request,
+    'CART',
+    'cart_cleared',
+    2,
+    200,
+    [
+        'items_removed' => $itemCount
+    ]
+);
+
+return response()->json([
+    'status' => true,
+    'message' => 'Cart cleared',
+    'summary' => [
+        'items' => 0,
+        'qty' => 0,
+        'total' => 0
+    ]
+]);
+
+}
 
     /* ===============================
         SUMMARY
@@ -236,7 +392,7 @@ class CartController extends Controller
     =============================== */
 private function formatItem($c)
 {
-    $price = $c->batch->mrp ?? 0;
+    $price = $c->batch->online_price ?? $c->batch->mrp ?? 0;
 
   $image = null;
 

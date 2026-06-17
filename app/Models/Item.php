@@ -62,7 +62,39 @@ class Item extends Model
         'max_discount',
 
         // 🔹 EXTRA
-        'notes'
+        'notes',
+        // 🔹 MEDICINE CONTENT
+'medicine_type',
+'introduction',
+'how_to_use',
+'safety_advise',
+'if_miss',
+'how_it_works',
+'interaction',
+
+// 🔹 USES / STORAGE
+'primary_use',
+'storage',
+'common_side_effect',
+
+// 🔹 SAFETY INTERACTIONS
+'alcohol_interaction',
+'pregnancy_interaction',
+'lactation_interaction',
+'driving_interaction',
+'kidney_interaction',
+'liver_interaction',
+
+// 🔹 EXTRA JSON
+'fact_box',
+'quick_tips',
+'q_a',
+
+// 🔹 MANUFACTURER INFO
+'manufacturer_address',
+'country_of_origin',
+'manufacturer_details',
+'marketer_details',
     ];
 
     /*
@@ -70,9 +102,17 @@ class Item extends Model
     | CASTS (AUTO JSON → ARRAY)
     |--------------------------------------------------------------------------
     */
-    protected $casts = [
-        'product_highlights' => 'array',
-    ];
+protected $casts = [
+
+    'product_highlights' => 'array',
+
+    'fact_box' => 'array',
+
+    'quick_tips' => 'array',
+
+    'q_a' => 'array',
+
+];
 
     /*
     |--------------------------------------------------------------------------
@@ -206,4 +246,32 @@ public function packings()
 {
     return $this->hasMany(SupplierItemCatalog::class);
 }
+
+public function getSafetyAdviceAttribute()
+{
+    return [
+
+        'alcohol' => $this->alcohol_interaction,
+
+        'pregnancy' => $this->pregnancy_interaction,
+
+        'lactation' => $this->lactation_interaction,
+
+        'driving' => $this->driving_interaction,
+
+        'kidney' => $this->kidney_interaction,
+
+        'liver' => $this->liver_interaction,
+
+    ];
+}
+
+public function substitutes()
+{
+    return self::where('id', '!=', $this->id)
+        ->where('molecule', $this->molecule)
+        ->limit(10);
+}
+
+
 }

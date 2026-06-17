@@ -19,29 +19,152 @@ class DashboardController extends Controller
         $today = now()->toDateString();
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
+/*
+|--------------------------------------------------------------------------
+| DASHBOARD DATE FILTER
+|--------------------------------------------------------------------------
+*/
 
+$range = request('range', 7);
+
+$startDate = now();
+
+if ($range == 7) {
+
+    $startDate = now()->subDays(7);
+
+} elseif ($range == 30) {
+
+    $startDate = now()->subDays(30);
+
+} elseif ($range == 90) {
+
+    $startDate = now()->subDays(90);
+
+} elseif ($range == 'month') {
+
+    $startDate = now()->startOfMonth();
+
+} elseif ($range == 'today') {
+
+    $startDate = now()->startOfDay();
+
+}
+
+
+
+        
         // ===============================
         // SALES (Customer Purchases) ✅
         // ===============================
-        $todaySales = Sale::whereDate('bill_date', $today)
-            ->sum('net_amount');
-        
-        $todayPurchaseCount = Sale::whereDate('bill_date', $today)
-            ->count();
+       /*
+|--------------------------------------------------------------------------
+| OFFLINE SALES
+|--------------------------------------------------------------------------
+*/
 
-        $monthlySales = Sale::whereBetween('bill_date', [$monthStart, $monthEnd])
-            ->sum('net_amount');
+$todayOfflineSales = DB::table('sales')
+->whereDate('bill_date', '>=', $startDate)
 
-        // Calculate trend (compare with yesterday)
-        $yesterdaySales = Sale::whereDate('bill_date', now()->subDay())
-            ->sum('net_amount');
-        $todaySalesTrend = $yesterdaySales > 0 
-            ? round((($todaySales - $yesterdaySales) / $yesterdaySales) * 100, 1)
-            : 0;
-        
-        $todayComparison = $todaySalesTrend > 0 
-            ? '+' . $todaySalesTrend . '%' 
-            : $todaySalesTrend . '%';
+    ->sum('net_amount');
+
+$monthlyOfflineSales = DB::table('sales')
+    ->whereBetween('bill_date', [$monthStart, $monthEnd])
+    ->sum('net_amount');
+
+$offlineSalesCount = DB::table('sales')
+    ->whereDate('bill_date', '>=', $startDate)
+    ->count();
+
+
+
+/*
+|--------------------------------------------------------------------------
+| ONLINE SALES
+|--------------------------------------------------------------------------
+*/
+
+
+$todayOnlineSales = DB::table('orders')
+    ->whereDate('created_at', '>=', $startDate)
+    ->sum('total');
+
+
+
+$monthlyOnlineSales = DB::table('orders')
+    ->whereBetween('created_at', [$monthStart, $monthEnd])
+    ->sum('total');
+
+
+$onlineOrdersCount = DB::table('orders')
+    ->whereDate('created_at', '>=', $startDate)
+    ->count();
+
+
+
+/*
+|--------------------------------------------------------------------------
+| TOTAL SALES
+|--------------------------------------------------------------------------
+*/
+
+$todayTotalSales =
+    $todayOfflineSales + $todayOnlineSales;
+
+$monthlyTotalSales =
+    $monthlyOfflineSales + $monthlyOnlineSales;
+      /*
+|--------------------------------------------------------------------------
+| SALES TREND
+|--------------------------------------------------------------------------
+*/
+
+$yesterdayOfflineSales = DB::table('sales')
+    ->whereDate('bill_date', now()->subDay())
+    ->sum('net_amount');
+
+$yesterdayOnlineSales = DB::table('orders')
+    ->whereDate('created_at', now()->subDay())
+    ->sum('total');
+
+/*
+|--------------------------------------------------------------------------
+| YESTERDAY TOTAL SALES
+|--------------------------------------------------------------------------
+*/
+
+$yesterdayTotalSales =
+    $yesterdayOfflineSales + $yesterdayOnlineSales;
+
+/*
+|--------------------------------------------------------------------------
+| TODAY SALES TREND %
+|--------------------------------------------------------------------------
+*/
+
+$todaySalesTrend =
+    $yesterdayTotalSales > 0
+
+    ? round(
+        (
+            ($todayTotalSales - $yesterdayTotalSales)
+            / $yesterdayTotalSales
+        ) * 100,
+        1
+    )
+
+    : 0;
+
+/*
+|--------------------------------------------------------------------------
+| COMPARISON TEXT
+|--------------------------------------------------------------------------
+*/
+
+$todayComparison =
+    $todaySalesTrend > 0
+        ? '+' . $todaySalesTrend . '%'
+        : $todaySalesTrend . '%';
 
         // ===============================
         // PURCHASE (Supplier Purchases)
@@ -51,6 +174,41 @@ class DashboardController extends Controller
         
         $purchaseTransactions = Purchase::whereDate('created_at', $today)
             ->count();
+            /*
+|--------------------------------------------------------------------------
+| TOTAL PURCHASE QTY
+|--------------------------------------------------------------------------
+*/
+
+$totalPurchasedQty = DB::table('purchase_items')
+    ->sum('quantity');
+
+/*
+|--------------------------------------------------------------------------
+| TOTAL OFFLINE SOLD
+|--------------------------------------------------------------------------
+*/
+
+$totalOfflineSoldQty = DB::table('sales_items')
+    ->sum('unit_qty');
+
+/*
+|--------------------------------------------------------------------------
+| TOTAL ONLINE SOLD
+|--------------------------------------------------------------------------
+*/
+
+$totalOnlineSoldQty = DB::table('order_items')
+    ->sum('qty');
+
+/*
+|--------------------------------------------------------------------------
+| TOTAL SOLD
+|--------------------------------------------------------------------------
+*/
+
+$totalSoldQty =
+    $totalOfflineSoldQty + $totalOnlineSoldQty;
 
         // ===============================
         // CUSTOMER OUTSTANDING (Fixed - No paid_amount column)
@@ -127,7 +285,20 @@ class DashboardController extends Controller
 
 $outOfStockCount = Batch::where('stock', '<=', 0)
     ->count();
+/*
+|--------------------------------------------------------------------------
+| TOTAL AVAILABLE STOCK
+|--------------------------------------------------------------------------
+*/
 
+$totalAvailableStock = DB::table('batches')
+    ->selectRaw('
+        SUM(
+            COALESCE(stock,0)
+            + COALESCE(loose_stock,0)
+        ) as total_stock
+    ')
+    ->value('total_stock');
 /*
 |--------------------------------------------------------------------------
 | Expiring Soon Medicines With Image
@@ -169,7 +340,9 @@ $outOfStockBatches = Batch::with('item')
         // ===============================
         // TOTAL COUNTS
         // ===============================
-        $totalMedicines = Item::count();
+$totalMedicines = DB::table('purchase_items')
+    ->distinct('item_id')
+    ->count('item_id');
         $totalCustomers = Customer::count();
         $totalSuppliers = Supplier::count();
         
@@ -182,65 +355,312 @@ $outOfStockBatches = Batch::with('item')
         // ===============================
         // RECENT TRANSACTIONS (Sales)
         // ===============================
-        $recentTransactions = Sale::with('customer')
-            ->orderBy('bill_date', 'DESC')
-            ->orderBy('created_at', 'DESC')
-            ->limit(10)
-            ->get()
-            ->map(function($sale) {
-                // Determine payment status without paid_amount column
-                // You might have other columns like 'payment_status' or calculate from ledger
-                $status = 'Completed';
-                
-                return (object)[
-                    'time' => $sale->created_at->format('h:i A'),
-                    'customer' => $sale->customer->name ?? 'Walk-in Customer',
-                    'amount' => $sale->net_amount,
-                    'status' => $status,
-                    'bill_no' => $sale->bill_no ?? 'N/A'
-                ];
-            });
+/*
+|--------------------------------------------------------------------------
+| RECENT OFFLINE SALES
+|--------------------------------------------------------------------------
+*/
 
-        // ===============================
-        // CHART DATA (Last 7 days)
-        // ===============================
-        $chartLabels = [];
-        $chartData = [];
-        
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i)->toDateString();
-            $chartLabels[] = now()->subDays($i)->format('D');
-            
-            $daySales = Sale::whereDate('bill_date', $date)->sum('net_amount');
-            $chartData[] = $daySales;
-        }
+$recentOfflineSales = DB::table('sales')
+    ->leftJoin(
+        'customers',
+        'customers.id',
+        '=',
+        'sales.customer_id'
+    )
+    ->select([
+        'sales.bill_number',
+        'sales.net_amount',
+        'sales.created_at',
+        'customers.name as customer_name',
+    ])
+    ->latest('sales.id')
+    ->limit(5)
+    ->get();
 
-        return view('dashboard', compact(
-            'todaySales',
-            'todayPurchaseCount',
-            'monthlySales',
-            'todaySalesTrend',
-            'todayComparison',
-            'todayPurchase',
-            'purchaseTransactions',
-            'customerOutstanding',
-            'overdueCustomers',
-            'supplierPayable',
-            'lowStockCount',
-            'expiryNearCount',
-            'totalMedicines',
-            'totalCustomers',
-            'totalSuppliers',
-            'totalCategories',
-            'recentTransactions',
-            'chartLabels',
-            'expiredStockCount',
-'outOfStockCount',
-'expiringSoonBatches',
-'expiredBatches',
-'outOfStockBatches',
-            'chartData'
+/*
+|--------------------------------------------------------------------------
+| RECENT ONLINE ORDERS
+|--------------------------------------------------------------------------
+*/
 
-        ));
+$recentOnlineOrders = DB::table('orders')
+    ->leftJoin(
+        'users',
+        'users.id',
+        '=',
+        'orders.user_id'
+    )
+    ->select([
+        'orders.id',
+        'orders.total',
+        'orders.created_at',
+        'users.name as customer_name',
+    ])
+    ->latest('orders.id')
+    ->limit(5)
+    ->get();
+
+/*
+|--------------------------------------------------------------------------
+| CHART DATA
+|--------------------------------------------------------------------------
+*/
+
+$chartLabels = [];
+
+$offlineChartData = [];
+
+$onlineChartData = [];
+
+for ($i = 6; $i >= 0; $i--) {
+
+    $date = now()->subDays($i)->toDateString();
+
+    $chartLabels[] =
+        now()->subDays($i)->format('D');
+
+    /*
+    |--------------------------------------------------------------------------
+    | OFFLINE SALES
+    |--------------------------------------------------------------------------
+    */
+
+    $offlineSale = DB::table('sales')
+        ->whereDate('bill_date', $date)
+        ->sum('net_amount');
+
+    /*
+    |--------------------------------------------------------------------------
+    | ONLINE SALES
+    |--------------------------------------------------------------------------
+    */
+$onlineSale = DB::table('orders')
+    ->whereDate('created_at', $date)
+    ->sum('total');
+
+    $offlineChartData[] = $offlineSale;
+
+    $onlineChartData[] = $onlineSale;
+}
+/*
+|--------------------------------------------------------------------------
+| OVERALL ERP STATS
+|--------------------------------------------------------------------------
+*/
+
+$totalSalesBills = DB::table('sales')
+    ->count();
+$totalOfflineOrders = $totalSalesBills;
+
+
+
+$totalSalesAmount = DB::table('sales')
+    ->sum('net_amount');
+
+$totalPurchases = DB::table('purchases')
+    ->count();
+
+$totalPurchaseAmount = DB::table('purchases')
+    ->sum('net_amount');
+
+$totalOnlineOrders = DB::table('orders')
+    ->count();
+
+$totalOnlineRevenue = DB::table('orders')
+    ->sum('total');
+
+$totalStock = DB::table('batches')
+    ->sum('stock');
+
+$totalLooseStock = DB::table('batches')
+    ->sum('loose_stock');
+
+/*
+|--------------------------------------------------------------------------
+| TODAY STATS
+|--------------------------------------------------------------------------
+*/
+
+$todayCustomers = DB::table('sales')
+->whereDate('bill_date', '>=', $startDate)
+
+
+    ->distinct('customer_id')
+    ->count('customer_id');
+
+$todayOrders = DB::table('orders')
+->whereDate('created_at', '>=', $startDate)
+
+    ->count();
+
+/*
+|--------------------------------------------------------------------------
+| MONTHLY STATS
+|--------------------------------------------------------------------------
+*/
+
+$monthlyPurchases = DB::table('purchases')
+    ->whereBetween('created_at', [$monthStart, $monthEnd])
+    ->sum('net_amount');
+
+$monthlyOrders = DB::table('orders')
+    ->whereBetween('created_at', [$monthStart, $monthEnd])
+    ->count();
+
+/*
+|--------------------------------------------------------------------------
+| TOP SELLING MEDICINES
+|--------------------------------------------------------------------------
+*/
+
+$topSellingMedicines = DB::table('sales_items')
+    ->join('items', 'items.id', '=', 'sales_items.item_id')
+    ->select(
+        'items.name',
+        DB::raw('SUM(sales_items.unit_qty) as total_qty')
+    )
+    ->groupBy('items.name')
+    ->orderByDesc('total_qty')
+    ->limit(5)
+    ->get();
+
+/*
+|--------------------------------------------------------------------------
+| RECENT CUSTOMERS
+|--------------------------------------------------------------------------
+*/
+
+$recentCustomers = DB::table('customers')
+    ->latest('id')
+    ->limit(5)
+    ->get();
+return view('dashboard', compact(
+
+    /*
+    |--------------------------------------------------------------------------
+    | SALES
+    |--------------------------------------------------------------------------
+    */
+
+    'todayOfflineSales',
+    'monthlyOfflineSales',
+    'totalOfflineOrders',
+    'offlineSalesCount',
+
+    'todayOnlineSales',
+    'monthlyOnlineSales',
+    'onlineOrdersCount',
+
+    'todayTotalSales',
+    'monthlyTotalSales',
+
+    /*
+    |--------------------------------------------------------------------------
+    | PURCHASE
+    |--------------------------------------------------------------------------
+    */
+
+    'todayPurchase',
+    'purchaseTransactions',
+    'totalPurchasedQty',
+
+    /*
+    |--------------------------------------------------------------------------
+    | SOLD
+    |--------------------------------------------------------------------------
+    */
+
+    'totalOfflineSoldQty',
+    'totalOnlineSoldQty',
+    'totalSoldQty',
+
+    /*
+    |--------------------------------------------------------------------------
+    | STOCK
+    |--------------------------------------------------------------------------
+    */
+
+    'totalAvailableStock',
+
+    'lowStockCount',
+    'expiryNearCount',
+    'expiredStockCount',
+    'outOfStockCount',
+
+    /*
+    |--------------------------------------------------------------------------
+    | OTHER
+    |--------------------------------------------------------------------------
+    */
+
+    'todaySalesTrend',
+    'todayComparison',
+
+    'customerOutstanding',
+    'overdueCustomers',
+    'supplierPayable',
+
+    'totalMedicines',
+    'totalCustomers',
+    'totalSuppliers',
+    'totalCategories',
+
+    /*
+    |--------------------------------------------------------------------------
+    | RECENT
+    |--------------------------------------------------------------------------
+    */
+
+    'recentOfflineSales',
+    'recentOnlineOrders',
+
+    /*
+    |--------------------------------------------------------------------------
+    | EXPIRY
+    |--------------------------------------------------------------------------
+    */
+
+    'expiringSoonBatches',
+    'expiredBatches',
+    'outOfStockBatches',
+
+    /*
+    |--------------------------------------------------------------------------
+    | CHART
+    |--------------------------------------------------------------------------
+    */
+'chartLabels',
+'offlineChartData',
+'onlineChartData',
+
+/*
+|--------------------------------------------------------------------------
+| ERP STATS
+|--------------------------------------------------------------------------
+*/
+
+'totalSalesBills',
+'totalSalesAmount',
+
+'totalPurchases',
+'totalPurchaseAmount',
+
+'totalOnlineOrders',
+'totalOnlineRevenue',
+
+'totalStock',
+'totalLooseStock',
+
+'todayCustomers',
+'todayOrders',
+
+'monthlyPurchases',
+'monthlyOrders',
+
+'topSellingMedicines',
+'recentCustomers'
+));
+
     }
 }
