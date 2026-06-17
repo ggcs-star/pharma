@@ -3,21 +3,24 @@
 namespace App\Http\Controllers\Api\Users;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Services\OtpService;
 use App\Mail\OtpMail;
+use App\Models\User;
+use App\Models\UserDevice;
+use App\Services\OtpService;
+use App\Services\SecurityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Sanctum\PersonalAccessToken;
+
 use Throwable;
 
 class AuthController extends Controller
 {
-
-
     private function normalizeEmail(string $email): string
     {
         return strtolower(trim($email));
@@ -25,157 +28,261 @@ class AuthController extends Controller
 
     private function sendEmailOtp(string $email, OtpService $otpService): void
     {
-            Log::info('OTP function triggered for: ' . $email);
+        Log::info('OTP function triggered for: ' . $email);
 
         $otp = $otpService->generate($email, 'email_verification');
+
         Mail::to($email)->send(new OtpMail($otp->code));
     }
 
-    public function register(Request $request, OtpService $otpService)
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | REGISTER
+    |--------------------------------------------------------------------------
+    */
 
-        Log::info('MOBILE HIT REGISTER', [
-            'url' => request()->fullUrl(),
-            'ip' => request()->ip(),
-            'data' => request()->all()
-        ]);
-        Log::info('RAW INPUT', [
-            'raw' => file_get_contents('php://input'),
-            'all' => request()->all(),
-            'headers' => request()->headers->all()
-        ]);
+   public function register(Request $request, OtpService $otpService)
+{
+$data = $request->validate([
+'name' => 'required|string|max:255',
+'email' => 'required|email|unique:users,email',
+'device_id' => 'required|string',
+'password' => [
+'required',
+'confirmed',
+'min:8',
+'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&]).+$/'
+],
+], [
+'password.regex' =>
+'Password must contain uppercase, lowercase, number and special symbol.',
+]);
 
-        $data = $request->validate(
+try {
+
+    DB::beginTransaction();
+
+    $email = $this->normalizeEmail($data['email']);
+
+    $user = User::create([
+        'name' => $data['name'],
+        'email' => $email,
+        'password' => Hash::make($data['password']),
+    ]);
+
+    $user->assignRole('user');
+
+    UserDevice::create([
+
+        'user_id' => $user->id,
+
+        'device_id' => $data['device_id'],
+
+        'fingerprint_hash' => hash(
+            'sha256',
+            $data['device_id']
+        ),
+
+        'device_name' => $request->userAgent(),
+
+        'browser' => 'Unknown',
+
+        'platform' => 'Unknown',
+
+        'app_version' => '1.0',
+
+        'last_ip_address' => $request->ip(),
+
+        'first_ip_address' => $request->ip(),
+
+        'user_agent' => $request->userAgent(),
+
+        'trust_level' => UserDevice::TRUST_NEW,
+
+        'is_verified' => false,
+
+        'is_active' => true,
+
+        'first_login_at' => now(),
+
+        'last_active_at' => now(),
+    ]);
+
+    $this->sendEmailOtp($email, $otpService);
+
+    DB::commit();
+
+    SecurityLogger::log(
+        $request,
+        'AUTH',
+        'user_registered',
+        2,
+        201,
+        [
+            'email' => $email,
+            'device_id' => $data['device_id']
+        ]
+    );
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Registration successful. OTP sent.'
+    ], 201);
+
+} catch (Throwable $e) {
+
+    DB::rollBack();
+
+    Log::error('REGISTER ERROR', [
+        'message' => $e->getMessage()
+    ]);
+
+    SecurityLogger::log(
+        $request,
+        'AUTH',
+        'registration_failed',
+        8,
+        500,
+        [
+            'error' => $e->getMessage()
+        ]
+    );
+
+    return response()->json([
+        'success' => false,
+        'message' => 'Registration failed'
+    ], 500);
+}
+
+
+}
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | VERIFY EMAIL OTP
+    |--------------------------------------------------------------------------
+    */
+
+public function verifyEmailOtp(Request $request, OtpService $otpService)
+{
+$data = $request->validate([
+'email' => 'required|email',
+'otp' => 'required|string',
+'device_id' => 'required|string',
+]);
+
+
+try {
+
+    $email = $this->normalizeEmail($data['email']);
+
+    $otp = $otpService->verify(
+        $email,
+        $data['otp'],
+        'email_verification'
+    );
+
+    if (!$otp) {
+
+        SecurityLogger::log(
+            $request,
+            'AUTH',
+            'otp_verification_failed',
+            7,
+            422,
             [
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
-                'password' => [
-                    'required',
-                    'confirmed',
-                    'min:8',
-                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&]).+$/'
-                ],
-            ],
-            [
-                'password.regex' =>
-                    'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special symbol.',
+                'email' => $email
             ]
         );
 
-        try {
-            DB::beginTransaction();
-
-            $email = $this->normalizeEmail($data['email']);
-
-            $user = User::create([
-                'name' => $data['name'],
-                'email' => $email,
-                'password' => Hash::make($data['password']),
-            ]);
-
-            $user->assignRole('user');
-
-            $this->sendEmailOtp($email, $otpService);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Registration successful. OTP has been sent to your email.',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                    ],
-                    'otp_sent_to' => $email
-                ]
-            ], 201);
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            Log::error('Register API Error', [
-                'message' => $e->getMessage(),
-                'email' => $data['email'] ?? null,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Registration failed. Please try again later.'
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid or expired OTP'
+        ], 422);
     }
 
+    DB::beginTransaction();
 
+    $user = User::where('email', $email)->first();
 
-    public function verifyEmailOtp(Request $request, OtpService $otpService)
-    {
-        $data = $request->validate([
-            'email' => 'required|email',
-            'otp' => 'required|string',
-        ]);
-
-        try {
-            $email = $this->normalizeEmail($data['email']);
-
-            $otp = $otpService->verify($email, $data['otp'], 'email_verification');
-
-            if (!$otp) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid or expired OTP'
-                ], 422);
-            }
-
-            DB::beginTransaction();
-
-            $user = User::where('email', $email)->first();
-
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
-
-            if (!$user->email_verified_at) {
-                $user->update([
-                    'email_verified_at' => now()
-                ]);
-            }
-
-            $otp->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Email verified successfully',
-                'data' => [
-                    'email_verified' => true,
-                    'email_verified_at' => $user->email_verified_at,
-                ]
-            ]);
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            Log::error('Verify OTP API Error', [
-                'message' => $e->getMessage(),
-                'email' => $data['email'],
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'OTP verification failed. Please try again.'
-            ], 500);
-        }
+    if (!$user) {
+        return response()->json([
+            'success' => false,
+            'message' => 'User not found'
+        ], 404);
     }
 
+    $user->update([
+        'email_verified_at' => now()
+    ]);
 
+    UserDevice::where(
+        'user_id',
+        $user->id
+    )
+    ->where(
+        'device_id',
+        $data['device_id']
+    )
+    ->update([
+
+        'is_verified' => true,
+
+        'verified_at' => now(),
+
+        'trust_level' =>
+            UserDevice::TRUST_TRUSTED,
+
+        'last_active_at' => now(),
+
+        'failed_attempts' => 0,
+
+        'failed_otp_attempts' => 0,
+    ]);
+
+    $otp->delete();
+
+    DB::commit();
+
+    SecurityLogger::log(
+        $request,
+        'AUTH',
+        'email_verified',
+        2,
+        200,
+        [
+            'user_id' => $user->id,
+            'device_id' => $data['device_id']
+        ]
+    );
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Email and device verified successfully'
+    ]);
+
+} catch (Throwable $e) {
+
+    DB::rollBack();
+
+    Log::error('VERIFY OTP ERROR', [
+        'message' => $e->getMessage()
+    ]);
+
+    return response()->json([
+        'success' => false,
+        'message' => 'OTP verification failed'
+    ], 500);
+}
+
+}
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOGIN
+    |--------------------------------------------------------------------------
+    */
 
     public function login(Request $request, OtpService $otpService)
     {
@@ -189,13 +296,40 @@ class AuthController extends Controller
         $user = User::where('email', $email)->first();
 
         if (!$user) {
+
+            SecurityLogger::log(
+                $request,
+                'AUTH',
+                'login_failed_user_not_found',
+                8,
+                404,
+                [
+                    'email' => $email
+                ]
+            );
+
             return response()->json([
                 'status' => false,
                 'message' => 'You are not registered'
             ], 404);
         }
 
-        if (!Auth::attempt(['email' => $email, 'password' => $request->password])) {
+        if (!Auth::attempt([
+            'email' => $email,
+            'password' => $request->password
+        ])) {
+
+            SecurityLogger::log(
+                $request,
+                'AUTH',
+                'login_failed_invalid_password',
+                9,
+                401,
+                [
+                    'user_id' => $user->id
+                ]
+            );
+
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid email or password'
@@ -206,24 +340,173 @@ class AuthController extends Controller
 
             $this->sendEmailOtp($email, $otpService);
 
+            SecurityLogger::log(
+                $request,
+                'AUTH',
+                'login_blocked_email_unverified',
+                6,
+                403,
+                [
+                    'user_id' => $user->id
+                ]
+            );
+
             return response()->json([
                 'status' => false,
-                'message' => 'Please verify your email. OTP has been sent again.',
-                'data' => [
-                    'email' => $email,
-                    'otp_sent' => true
-                ]
+                'message' => 'Please verify your email.'
             ], 403);
         }
 
-        $token = $user->createToken(
-            $user->hasRole('user') ? 'user-token' : 'admin-token'
-        )->plainTextToken;
+        /*
+        |--------------------------------------------------------------------------
+        | DEVICE HANDLING
+        |--------------------------------------------------------------------------
+        */
+
+        $deviceId =
+            $request->device_id ??
+            $request->header('X-Device-ID') ??
+            $request->header('x-device-id') ??
+            $request->server('HTTP_X_DEVICE_ID');
+
+        $isTrustedDevice = false;
+        $device = null;
+
+        if ($deviceId) {
+
+            $device = UserDevice::firstOrCreate(
+
+                [
+                    'user_id' => $user->id,
+                    'device_id' => $deviceId
+                ],
+
+                [
+                   'fingerprint_hash' => hash(
+    'sha256',
+    $deviceId
+),
+
+                    'device_name' => $request->userAgent(),
+
+                    'browser' => 'Chrome',
+
+                    'platform' => 'Windows',
+
+                    'app_version' => '1.0',
+
+                    'last_ip_address' => $request->ip(),
+
+                    'user_agent' => $request->userAgent(),
+
+                    'trust_level' => 'NEW',
+
+                    'failed_attempts' => 0,
+
+                    'last_active_at' => now()
+                ]
+            );
+
+            $device->update([
+                'last_ip_address' => $request->ip(),
+                'last_active_at' => now(),
+                'user_agent' => $request->userAgent()
+            ]);
+
+   /*
+|--------------------------------------------------------------------------
+| REFRESH DEVICE
+|--------------------------------------------------------------------------
+*/
+
+$device = $device->fresh();
+
+/*
+|--------------------------------------------------------------------------
+| TRUST CHECK
+|--------------------------------------------------------------------------
+*/
+
+$isTrustedDevice =
+    $device->trust_level ===
+    UserDevice::TRUST_TRUSTED;
+
+/*
+|--------------------------------------------------------------------------
+| DEBUG
+|--------------------------------------------------------------------------
+*/
+
+Log::info('LOGIN TRUST CHECK', [
+
+    'device_id' =>
+        $device->device_id,
+
+    'trust_level' =>
+        $device->trust_level,
+
+    'trusted_constant' =>
+        UserDevice::TRUST_TRUSTED,
+
+    'is_trusted' =>
+        $isTrustedDevice
+]);
+
+            $request->attributes->set(
+                'current_device',
+                $device
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | TOKEN
+        |--------------------------------------------------------------------------
+        */
+
+       $user->tokens()->delete();
+
+$token = $user->createToken(
+    $user->hasRole('user')
+        ? 'user-token'
+        : 'admin-token'
+)->plainTextToken;
+
+        /*
+        |--------------------------------------------------------------------------
+        | SECURITY LOG
+        |--------------------------------------------------------------------------
+        */
+
+        SecurityLogger::log(
+            $request,
+            'AUTH',
+            'login_success',
+            2,
+            200,
+            [
+                'user_id' => $user->id,
+                'device_id' => $deviceId,
+                'trusted_device' => $isTrustedDevice
+            ]
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
         return response()->json([
             'status' => true,
             'message' => 'Login successful',
+
             'token' => $token,
+
+            'trusted_device' => $isTrustedDevice,
+
+            'device_verification_required' => !$isTrustedDevice,
+
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -232,217 +515,23 @@ class AuthController extends Controller
             ]
         ]);
     }
-public function verifyResetOtp(Request $request, OtpService $otpService)
-{
-    $data = $request->validate([
-        'email' => 'required|email',
-        'otp' => 'required|string'
-    ]);
 
-    try {
-
-        $email = $this->normalizeEmail($data['email']);
-
-        $otp = $otpService->verify($email, $data['otp'], 'password_reset');
-
-        if (!$otp) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid or expired OTP'
-            ], 422);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'OTP verified successfully'
-        ]);
-
-    } catch (Throwable $e) {
-
-        Log::error('Verify Reset OTP Error', [
-            'message' => $e->getMessage(),
-            'email' => $data['email'],
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'OTP verification failed'
-        ], 500);
-    }
-}
-public function resetPassword(Request $request, OtpService $otpService)
-{
-    $data = $request->validate([
-        'email' => 'required|email',
-        'otp' => 'required|string',
-        'password' => [
-            'required',
-            'confirmed',
-            'min:8',
-            'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&]).+$/'
-        ],
-    ], [
-        'password.regex' =>
-            'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special symbol.',
-    ]);
-
-    try {
-
-        $email = $this->normalizeEmail($data['email']);
-
-        $otp = $otpService->verify($email, $data['otp'], 'password_reset');
-
-        if (!$otp) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid or expired OTP'
-            ], 422);
-        }
-
-        DB::beginTransaction();
-
-        $user = User::where('email', $email)->first();
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
-        }
-
-        $user->update([
-            'password' => Hash::make($data['password'])
-        ]);
-
-        // 🔥 Important for wallet / MLM apps
-        // Revoke all active tokens after password change
-$user->tokens()->where('name', 'user-token')->delete();
-
-        $otp->delete();
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset successfully'
-        ]);
-
-    } catch (Throwable $e) {
-
-        DB::rollBack();
-
-        Log::error('Reset Password API Error', [
-            'message' => $e->getMessage(),
-            'email' => $data['email'],
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Password reset failed. Try again.'
-        ], 500);
-    }
-}
-
-    public function resendEmailOtp(Request $request, OtpService $otpService)
-    {
-        $data = $request->validate([
-            'email' => 'required|email'
-        ]);
-
-        try {
-            $email = strtolower(trim($data['email']));
-
-            $user = User::where('email', $email)->first();
-
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
-
-            if ($user->email_verified_at) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Email is already verified'
-                ], 422);
-            }
-
-            $otp = $otpService->generate($email, 'email_verification');
-
-            Mail::to($email)->send(new OtpMail($otp->code));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'OTP has been resent successfully',
-                'data' => [
-                    'email' => $email,
-                    'expires_in' => 600
-                ]
-            ]);
-
-        } catch (Throwable $e) {
-
-            Log::error('Resend OTP API Error', [
-                'message' => $e->getMessage(),
-                'email' => $data['email'] ?? null,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Unable to resend OTP. Please try again later.'
-            ], 500);
-        }
-    }
-
-private function sendResetOtp(string $email, OtpService $otpService): void
-{
-    Log::info('Password Reset OTP triggered for: ' . $email);
-
-    $otp = $otpService->generate($email, 'password_reset');
-
-    Mail::to($email)->send(new OtpMail($otp->code));
-}
-public function forgotPassword(Request $request, OtpService $otpService)
-{
-    $data = $request->validate([
-        'email' => 'required|email'
-    ]);
-
-    try {
-
-        $email = $this->normalizeEmail($data['email']);
-$user = User::where('email', $email)->first();
-
-if ($user) {
-    $this->sendResetOtp($email, $otpService);
-}
-
-return response()->json([
-    'success' => true,
-    'message' => 'If the email exists, a reset OTP has been sent.',
-    'data' => [
-        'expires_in' => 600
-    ]
-]);
-    
-
-    } catch (Throwable $e) {
-
-        Log::error('Forgot Password API Error', [
-            'message' => $e->getMessage(),
-            'email' => $data['email'] ?? null,
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Unable to process request. Try again later.'
-        ], 500);
-    }
-}
+    /*
+    |--------------------------------------------------------------------------
+    | LOGOUT
+    |--------------------------------------------------------------------------
+    */
 
     public function logout(Request $request)
     {
+        SecurityLogger::log(
+            $request,
+            'AUTH',
+            'logout',
+            1,
+            200
+        );
+
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
@@ -450,4 +539,19 @@ return response()->json([
             'message' => 'Logged out successfully'
         ]);
     }
+public function checkAuth(Request $request)
+{
+    $bearerToken = $request->bearerToken();
+
+    $token = PersonalAccessToken::findToken(
+        $bearerToken
+    );
+
+    return response()->json([
+        'bearer_token' => $bearerToken,
+        'token_found' => $token ? true : false,
+        'token_id' => $token?->id,
+        'user_id' => $token?->tokenable_id,
+    ]);
+}
 }

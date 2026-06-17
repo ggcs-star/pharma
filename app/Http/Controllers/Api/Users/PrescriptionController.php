@@ -16,11 +16,26 @@ public function upload(Request $request)
 {
     try {
 
+\Log::info('UPLOAD DEBUG', [
+    'has_file' => $request->hasFile('prescription'),
+    'files' => $request->allFiles(),
+]);
+
+if ($request->hasFile('prescription')) {
+    $file = $request->file('prescription');
+
+    \Log::info('FILE DEBUG', [
+        'original_name' => $file->getClientOriginalName(),
+        'extension' => $file->getClientOriginalExtension(),
+        'mime' => $file->getMimeType(),
+        'client_mime' => $file->getClientMimeType(),
+    ]);
+}
         // ✅ Step 1: Validate
-        $validated = $request->validate([
-            'prescription' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'notes' => 'nullable|string|max:500'
-        ]);
+       $validated = $request->validate([
+    'prescription' => 'required|image|max:5120',
+    'notes' => 'nullable|string|max:500'
+]);
 
         // ✅ Step 2: Check file exists
         if (!$request->hasFile('prescription')) {
@@ -96,7 +111,10 @@ public function upload(Request $request)
         ]);
 
         // ✅ TEMP DEBUG (remove after fix)
-        dd($e->getMessage());
+        return response()->json([
+    'status' => false,
+    'message' => $e->getMessage()
+], 500);
 
         return response()->json([
             'status' => false,

@@ -95,6 +95,8 @@
                                     <th style="width: 7%;">Expiry <span class="text-danger">*</span></th>
                                     <th style="width: 6%;">MRP (₹)</th>
                                     <th style="width: 6%;">PTR (₹)</th>
+                                    <th style="width: 6%;">Offline Price</th>
+<th style="width: 6%;">Online Price</th>
                                     <th style="width: 5%;">GST%</th>
                                     <th style="width: 5%;">Disc%</th>
                                     <th style="width: 6%;">Disc ₹</th>
@@ -234,6 +236,19 @@
                 <td>
                     <input type="number" step="0.01" name="items[${index}][purchase_rate]" class="form-control form-control-sm rate text-end" required>
                 </td>
+                <td>
+    <input type="number" step="0.01"
+        name="items[${index}][offline_price]"
+        class="form-control form-control-sm offline_price text-end"
+        value="0">
+</td>
+
+<td>
+    <input type="number" step="0.01"
+        name="items[${index}][online_price]"
+        class="form-control form-control-sm online_price text-end"
+        value="0">
+</td>
                 <td>
                     <input type="number" step="0.01" name="items[${index}][gst_percent]" class="form-control form-control-sm gst text-end" value="0">
                 </td>
@@ -409,7 +424,8 @@ function populateItemData(data, row) {
 
     if (data.mrp) row.querySelector('.mrp').value = data.mrp;
     if (data.purchase_rate) row.querySelector('.rate').value = data.purchase_rate;
-
+row.querySelector('.offline_price').value = data.mrp || 0;
+row.querySelector('.online_price').value = data.mrp || 0;
     calculateRowTotal(row);
     calculateTotal();
 }    function calculateRowTotal(row) {

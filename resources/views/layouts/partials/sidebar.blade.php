@@ -233,6 +233,20 @@
     <a href="{{ route('admin.orders.index') }}" class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
         <i class="fa fa-box me-2"></i> Online Orders
     </a>
+
+    <!-- Homepage Management -->
+<div class="menu-title">
+    <i class="fa fa-globe me-1"></i> Homepage
+</div>
+
+<a
+    href="{{ route('home-sections.index') }}"
+    class="{{ request()->routeIs('home-sections.*') ? 'active' : '' }}"
+>
+    <i class="fa fa-layer-group me-2"></i>
+
+    Home Sections
+</a>
     <!-- Inventory -->
     <div class="menu-title">
         <i class="fa fa-boxes me-1"></i> Inventory

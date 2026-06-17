@@ -353,7 +353,8 @@ private function getBatchStock($fromDate = null, $toDate = null)
     'batches.loose_stock',
     'batches.mrp',
     'batches.ptr',
-    'batches.selling_price',
+    'batches.offline_price',
+'batches.online_price',
 
     DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
     DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
@@ -503,7 +504,7 @@ $batchesForStock = DB::table('batches')
 | Final Available Stock
 |--------------------------------------------------------------------------
 */
-$isStripBased = in_array(strtolower($item->product_form), ['tablet','capsule']);
+$isStripBased = ($item->pack_qty ?? 1) > 1;
 
 $packSize = $isStripBased ? ($item->pack_qty ?? 10) : 1;
 
@@ -580,7 +581,8 @@ $batches = DB::table('batches')
     'batches.loose_stock',
     'batches.mrp',
     'batches.ptr',
-    'batches.selling_price',
+    'batches.offline_price',
+'batches.online_price',
 
     DB::raw('COALESCE(s.total_purchase, 0) as total_purchase'),
     DB::raw('COALESCE(s.total_sale, 0) as total_sale'),
@@ -709,33 +711,7 @@ $sales = DB::table('sales_items')
 
     ->orderBy('sales.created_at', 'desc')
     ->get();
-    $totalSoldStrip = 0;
-$totalSoldLoose = 0;
-
-foreach ($sales as $sale) {
-
-    // Strip Sale
-    if ($sale->sale_type === 'strip') {
-        $totalSoldStrip += (int) $sale->qty;
-    }
-
-    // Loose Sale
-    if ($sale->sale_type === 'loose') {
-        $totalSoldLoose += (int) ($sale->unit_qty ?? 0);
-    }
-}
-$packSize = $item->pack_qty ?? 10;
-
-// Step 1: convert strip into loose
-$totalLooseFromStrip = $totalSoldStrip * $packSize;
-
-// Step 2: total loose
-$totalFinalLoose = $totalLooseFromStrip + $totalSoldLoose;
-
-// Step 3: normalize back
-$finalSoldStrip = intdiv($totalFinalLoose, $packSize);
-$finalSoldLoose = $totalFinalLoose % $packSize;
-    $onlineOrders = DB::table('order_items')
+ $onlineOrders = DB::table('order_items')
     ->join('orders', 'orders.id', '=', 'order_items.order_id')
     ->join('batches', 'batches.id', '=', 'order_items.batch_id')
     ->leftJoin('users', 'users.id', '=', 'orders.user_id')
@@ -762,12 +738,66 @@ DB::raw("NULL as customer_mobile"),
 
     ->orderBy('orders.created_at', 'desc')
     ->get();
+$totalSoldQty = 0;
+
+$packSize = max((int) ($item->pack_qty ?? 1), 1);
+/*
+|--------------------------------------------------------------------------
+| Offline Sales
+|--------------------------------------------------------------------------
+*/
+foreach ($sales as $sale) {
+
+    /*
+    |--------------------------------------------------------------------------
+    | quantity already stored in final loose qty
+    |--------------------------------------------------------------------------
+    */
+
+    $totalSoldQty += (int) ($sale->qty ?? 0);
+}
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Online Orders
+|--------------------------------------------------------------------------
+*/
+
+foreach ($onlineOrders as $order) {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Online orders always sell full strip
+    |--------------------------------------------------------------------------
+    */
+
+    $totalSoldQty += (
+        ((int) $order->qty)
+        * max((int) ($item->pack_qty ?? 1), 1)
+    );
+}
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Final Normalize
+|--------------------------------------------------------------------------
+*/
+
+$finalSoldStrip = intdiv($totalSoldQty, $packSize);
+
+$finalSoldLoose = $totalSoldQty % $packSize;
+
+
+   
 return view('stock.show', compact(
     'item',
     'totalReturn',
 'totalPurchased',
-    'totalSoldStrip',
-    'totalSoldLoose',
+  
 
     'finalSoldStrip',
     'finalSoldLoose',

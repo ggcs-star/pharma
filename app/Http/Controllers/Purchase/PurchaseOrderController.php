@@ -516,8 +516,8 @@ public function updateMrp(Request $request, $id)
         */
 
         'items.*.item_id' => 'required|exists:items,id',
-        'items.*.final_mrp' => 'required|numeric|min:0',
-        'items.*.conversion_factor' => 'required|numeric|min:1',
+'items.*.offline_price' => 'required|numeric|min:0',
+'items.*.online_price' => 'nullable|numeric|min:0',        'items.*.conversion_factor' => 'required|numeric|min:1',
     ]);
 
     DB::beginTransaction();
@@ -568,13 +568,17 @@ public function updateMrp(Request $request, $id)
             | STEP 2A → Update PO Item final_mrp
             |--------------------------------------------------------------------------
             */
+$offline = $row['offline_price'];
+$online  = $row['online_price'] ?? $offline;
 
-            PurchaseOrderItem::where([
-                'purchase_order_id' => $order->id,
-                'item_id' => $row['item_id'],
-            ])->update([
-                'final_mrp' => $row['final_mrp'],
-            ]);
+PurchaseOrderItem::where([
+    'purchase_order_id' => $order->id,
+    'item_id' => $row['item_id'],
+])->update([
+    'final_mrp' => $offline, // existing logic
+    'offline_price' => $offline, // NEW
+    'online_price' => $online,   // NEW
+]);
 
             /*
             |--------------------------------------------------------------------------
@@ -778,8 +782,8 @@ if ($rate <= 0) {
 */
 
 $mrp = (float) (
-    $poItem->final_mrp
-    ?? $catalog->base_price
+    $catalog->base_price
+    ?? $poItem->final_mrp
     ?? 0
 );
 
@@ -817,25 +821,29 @@ if ($mrp <= 0) {
             |--------------------------------------------------------------------------
             */
 
-            $batch = \App\Models\Batch::create([
-                'item_id' => $poItem->item_id,
+$batch = \App\Models\Batch::create([
+    'item_id' => $poItem->item_id,
 
-                'batch_code' => 'PO-BATCH-' .
-                    $poItem->item_id . '-' .
-                    time() . rand(100, 999),
+    'batch_code' => 'PO-BATCH-' .
+        $poItem->item_id . '-' .
+        time() . rand(100, 999),
 
-                'expiry_date' => $catalog->expiry_date
-                    ?? now()->addYear(),
+    'expiry_date' => $catalog->expiry_date
+        ?? now()->addYear(),
 
-             'stock' => $qty,
-'loose_stock' => 0,
-                'mrp' => $mrp,
-                'ptr' => $rate,
-                'selling_price' => $mrp,
+    'stock' => $qty,
+    'loose_stock' => 0,
 
-                'created_by' => auth()->id(),
-                'updated_by' => auth()->id(),
-            ]);
+    'mrp' => $mrp,
+    'ptr' => $rate,
+
+    // 🔥 NEW SYSTEM
+   'offline_price' => $poItem->offline_price ?? $mrp,
+'online_price'  => $poItem->online_price ?? $mrp,
+
+    'created_by' => auth()->id(),
+    'updated_by' => auth()->id(),
+]);
 
             if (!$batch) {
                 throw new \Exception(

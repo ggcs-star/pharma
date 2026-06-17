@@ -6,15 +6,51 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
-    protected $fillable = ['name'];
+    /*
+    |--------------------------------------------------------------------------
+    | TABLE
+    |--------------------------------------------------------------------------
+    */
+
+    protected $table = 'categories';
+
+    /*
+    |--------------------------------------------------------------------------
+    | FILLABLE
+    |--------------------------------------------------------------------------
+    */
+
+    protected $fillable = [
+
+        'name',
+        'slug',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | SUB CATEGORIES
+    |--------------------------------------------------------------------------
+    */
 
     public function subCategories()
     {
-        return $this->hasMany(SubCategory::class);
+        return $this->hasMany(
+            SubCategory::class,
+            'category_id'
+        );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ITEMS
+    |--------------------------------------------------------------------------
+    */
 
     public function items()
     {
-        return $this->hasMany(Item::class);
+        return $this->hasMany(
+            Item::class,
+            'category_id'
+        );
     }
 }

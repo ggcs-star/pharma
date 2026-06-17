@@ -299,56 +299,38 @@ public function store(Request $request)
             | Batch Find
             |--------------------------------------------------------------------------
             */
+$batch = Batch::where('item_id', $itemData['item_id'])
+    ->where('batch_code', $itemData['batch_number'])
+    ->whereDate('expiry_date', $itemData['expiry_date'])
+    ->lockForUpdate()
+    ->first();
 
-            $batch = Batch::where('item_id', $itemData['item_id'])
-                ->where('batch_code', $batchCode)
-                ->whereDate('expiry_date', $expiry)
-                ->lockForUpdate()
-                ->first();
+// 🔥 UPDATE EXISTING BATCH
+if ($batch) {
+    $batch->increment('stock', $totalQty);
 
-            if ($batch) {
+    $batch->mrp = $mrp;
+    $batch->ptr = $rate;
 
-                /*
-                |--------------------------------------------------------------------------
-                | Existing Batch Update
-                |--------------------------------------------------------------------------
-                */
+    $batch->offline_price = $itemData['offline_price'] ?? $mrp;
+    $batch->online_price = $itemData['online_price'] ?? $mrp;
 
-                // strip stock
-               $batch->increment('stock', $totalQty);
+    $batch->save();
+}
 
-$batch->mrp = $mrp;
-$batch->ptr = $rate;
-$batch->selling_price = $mrp;
-$batch->save();
-            } else {
-
-                /*
-                |--------------------------------------------------------------------------
-                | New Batch Create
-                |--------------------------------------------------------------------------
-                */
-
-                $batch = Batch::create([
-                    'item_id' => $itemData['item_id'],
-                    'batch_code' => $batchCode,
-                    'expiry_date' => $expiry,
-
-                    // strip stock
-                    'stock' => $totalQty,
-
-                    // loose tablet stock
-'loose_stock' => 0,
-                    'mrp' => $mrp,
-                    'ptr' => $rate,
-                    'selling_price' => $mrp,
-
-                    'created_by' => auth()->id(),
-                    'updated_by' => auth()->id(),
-                ]);
-            }
-
-            /*
+// 🔥 CREATE NEW BATCH IF NOT FOUND
+if (!$batch) {
+    $batch = Batch::create([
+        'item_id' => $itemData['item_id'],
+        'batch_code' => $itemData['batch_number'],
+        'expiry_date' => $itemData['expiry_date'],
+        'stock' => $totalQty,
+        'mrp' => $mrp,
+        'ptr' => $rate,
+        'offline_price' => $itemData['offline_price'] ?? $mrp,
+        'online_price' => $itemData['online_price'] ?? $mrp,
+    ]);
+}            /*
             |--------------------------------------------------------------------------
             | Purchase Item Create
             |--------------------------------------------------------------------------
@@ -543,16 +525,36 @@ public function update(Request $request, $id)
 
             $totalAmount += $total;
             $totalGST += $gstAmount;
-
+$batch = Batch::where('item_id', $itemData['item_id'])
+    ->where('batch_code', $itemData['batch_number'])
+    ->whereDate('expiry_date', $itemData['expiry_date'])
+    ->lockForUpdate()
+    ->first();
             // Batch
-            $batch = Batch::where('item_id', $itemData['item_id'])
-                ->where('batch_code', $itemData['batch_number'])
-                ->lockForUpdate()
-                ->first();
+           if ($batch) {
+    $batch->increment('stock', $totalQty);
 
-            if ($batch) {
-                $batch->increment('stock', $totalQty);
-            }
+$batch->mrp = $mrp;
+$batch->ptr = $rate;
+
+// 🔥 IMPORTANT FIX
+$batch->offline_price = $itemData['offline_price'] ?? $mrp;
+$batch->online_price = $itemData['online_price'] ?? $mrp;
+
+    $batch->save();
+}
+if (!$batch) {
+    $batch = Batch::create([
+        'item_id' => $itemData['item_id'],
+        'batch_code' => $itemData['batch_number'],
+        'expiry_date' => $itemData['expiry_date'],
+        'stock' => $totalQty,
+        'mrp' => $mrp,
+        'ptr' => $rate,
+        'offline_price' => $itemData['offline_price'] ?? $mrp,
+        'online_price' => $itemData['online_price'] ?? $mrp,
+    ]);
+}
 
             // Purchase Item
             PurchaseItem::create([

@@ -380,9 +380,17 @@ public function store(Request $request)
 
             $conversionFactor = $item->conversion_factor ?? 1;
 
-            $base = 0;
-            $movementUnit = '';
-            $unitQty = 0;
+/*
+|--------------------------------------------------------------------------
+| ONLY OFFLINE PRICE
+|--------------------------------------------------------------------------
+*/
+
+$price = $batch->offline_price ?? 0;
+
+$base = 0;
+$movementUnit = '';
+$unitQty = 0;
 
             /*
             |--------------------------------------------------------------------------
@@ -396,7 +404,7 @@ public function store(Request $request)
         throw new \Exception("Stock not available for {$item->name}");
     }
 
-    $base = $qty * $row['selling_price'];
+    $base = $qty * $price;
 
     $batch->reduceStock($qty);
 
@@ -410,6 +418,7 @@ public function store(Request $request)
 else {
 
     $packSize = $item->pack_qty ?? 10;
+
     $looseQty = (int) $qty;
 
     if ($batch->loose_stock < $looseQty) {
@@ -423,16 +432,39 @@ else {
         }
 
         $batch->stock -= $stripToBreak;
+
         $batch->loose_stock += $stripToBreak * $packSize;
     }
 
     $batch->loose_stock -= $looseQty;
 
-    $base = $row['selling_price'] * $looseQty;
+    /*
+    |--------------------------------------------------------------------------
+    | PER TABLET PRICE
+    |--------------------------------------------------------------------------
+    */
+
+    $perTabletPrice = $price / $packSize;
+
+    /*
+    |--------------------------------------------------------------------------
+    | FINAL AMOUNT
+    |--------------------------------------------------------------------------
+    */
+
+    $base = $perTabletPrice * $looseQty;
+
+    /*
+    |--------------------------------------------------------------------------
+    | SAVE TABLET PRICE
+    |--------------------------------------------------------------------------
+    */
+
+    $price = $perTabletPrice;
 
     $movementUnit = 'Tablet';
+
     $unitQty = $looseQty;
-    
 }
 $batch->save(); 
          /*
@@ -484,13 +516,12 @@ $finalAmount = $base + $gstAmount;
                 | Unit price
                 */
 
-                'selling_price' => $row['selling_price'],
-
+'selling_price' => $price,
                 /*
                 | Batch MRP
                 */
 
-                'mrp' => $batch->mrp,
+    'mrp' => $batch->offline_price ?? $price,
 
                 'discount' => 0,
 

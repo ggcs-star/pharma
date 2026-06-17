@@ -182,16 +182,19 @@
                             </div>
 
                             <!-- Existing Gallery Images -->
-                            @if($item->galleryImages && $item->galleryImages->count() > 0)
+                            @if($item->images && $item->images->count() > 0)
                                 <div class="mb-4">
                                     <label class="form-label fw-semibold small text-muted">Current Gallery Images</label>
                                     <div class="row g-3" id="existingGalleryGrid">
-                                        @foreach($item->galleryImages as $galleryImage)
+                                        @foreach($item->images as $galleryImage)
                                             <div class="col-md-3 existing-gallery-item" data-id="{{ $galleryImage->id }}" data-path="{{ $galleryImage->image_path }}">
                                                 <div class="position-relative">
-                                                    <img src="{{ Storage::disk('s3')->url($galleryImage->image_path) }}" 
-                                                         class="img-fluid rounded-3 border shadow-sm" 
-                                                         style="height: 120px; width: 100%; object-fit: cover;">
+                                                    <img src="{{ filter_var($galleryImage->image, FILTER_VALIDATE_URL) 
+    ? $galleryImage->image 
+    : Storage::disk('s3')->url($galleryImage->image) }}"
+     class="img-fluid rounded-3 border shadow-sm"
+     style="height: 120px; width: 100%; object-fit: cover;"> 
+                                                      
                                                     <button type="button" class="btn btn-sm btn-danger rounded-circle position-absolute top-0 end-0 m-2 remove-existing-gallery" style="width: 28px; height: 28px; padding: 0; line-height: 1;">
                                                         <i class="bi bi-x-lg small"></i>
                                                     </button>

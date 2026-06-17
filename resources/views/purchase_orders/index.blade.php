@@ -450,173 +450,178 @@
 </div>
 
 @endsection
-
 {{-- ALL MODALS PLACED OUTSIDE TABLE --}}
 @if($orders->isNotEmpty())
-    @foreach($orders as $order)
-    <!-- Update Price Modal for Order #{{ $order->id }} -->
-    <div class="modal fade" id="updatePriceModal{{ $order->id }}" tabindex="-1" aria-labelledby="updatePriceModalLabel{{ $order->id }}" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <form method="POST" action="{{ url('/po/'.$order->id.'/update-mrp') }}">
-                    @csrf
-                    <div class="modal-header border-0 pt-4 px-4">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle bg-primary bg-opacity-10 p-3">
-                                <i class="fas fa-tag text-primary fa-lg"></i>
-                            </div>
-                            <div>
-                                <h5 class="modal-title fw-bold mb-0" id="updatePriceModalLabel{{ $order->id }}">Update Final MRP</h5>
-                                <p class="text-muted small mb-0 mt-1">Set final selling MRP for all products in this order</p>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+@foreach($orders as $order)
+
+<div class="modal fade" id="updatePriceModal{{ $order->id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+
+
+        <form method="POST" action="{{ url('/po/'.$order->id.'/update-mrp') }}">
+            @csrf
+
+            <div class="modal-header border-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                        <i class="fas fa-tag text-primary fa-lg"></i>
                     </div>
-                    
-                    <div class="modal-body px-4 py-3">
-                        <!-- Order Info Card -->
-                        <div class="bg-light rounded-3 p-3 mb-4">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <small class="text-muted d-block">Order Number</small>
-                                    <span class="fw-semibold">{{ $order->order_number }}</span>
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted d-block">Supplier</small>
-                                    <span class="fw-semibold">{{ $order->supplier->name ?? 'N/A' }}</span>
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted d-block">Total Items</small>
-                                    <span class="fw-semibold">{{ $order->items_count ?? 0 }} products</span>
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted d-block">Purchase Grand Total</small>
-<span class="fw-semibold text-success">
-    ₹ {{ number_format($order->net_amount ?? 0, 2) }}
-</span>                                </div>
+                    <div>
+                        <h5 class="fw-bold mb-0">Update Pricing</h5>
+                        <small class="text-muted">Offline (Store) + Online (App)</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body px-4 py-3">
+
+                <!-- ORDER INFO -->
+                <div class="bg-light rounded-3 p-3 mb-4">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <small class="text-muted">Order</small>
+                            <div class="fw-semibold">{{ $order->order_number }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Supplier</small>
+                            <div class="fw-semibold">{{ $order->supplier->name ?? 'N/A' }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Items</small>
+                            <div>{{ $order->items_count }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Total</small>
+                            <div class="text-success fw-bold">
+                                ₹ {{ number_format($order->net_amount ?? 0, 2) }}
                             </div>
                         </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-bordered align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 22%;">Item Name</th>
-                                        <th style="width: 15%;">PTR</th>
-                                        <th style="width: 15%;">MRP</th>
-                                        <th style="width: 20%;">Final MRP</th>
-                                        <th style="width: 20%;">Pack Size</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($order->items as $index => $poItem)
-                                    <tr>
-                                        <td>
-                                            <div class="fw-bold">
-                                                {{ $poItem->item->name ?? 'Item Not Found' }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="fw-semibold text-primary">
-                                                ₹ {{ number_format($poItem->rate ?? 0, 2) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="fw-semibold text-success">
-                                                ₹ {{ number_format(
-                                                    optional($poItem->supplierItemCatalog)->base_price ?? 0,
-                                                    2
-                                                ) }}
-                                            </span>
-                                        </td>
-                                        <td style="display:none;">
-                                            <input type="hidden"
-                                                   name="items[{{ $index }}][item_id]"
-                                                   value="{{ $poItem->item_id }}">
-                                        </td>
-                                        @php
-    $packSize = optional($poItem->supplierItemCatalog)->pack_size
-                ?? $poItem->item->conversion_factor
-                ?? 1;
+                    </div>
+                </div>
 
-    $itemName = strtolower($poItem->item->name ?? '');
+                <!-- TABLE -->
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th>PTR</th>
+                                <th>MRP</th>
+                                <th>Offline Price</th>
+                                <th>Online Price</th>
+                                <th>Pack</th>
+                            </tr>
+                        </thead>
 
-    if (str_contains($itemName, 'injection')) {
-        $packType = 'Vial';
-        $unitType = 'Injection';
-    } elseif (str_contains($itemName, 'syrup')) {
-        $packType = 'Bottle';
-        $unitType = 'ml';
-    } elseif (str_contains($itemName, 'capsule')) {
-        $packType = 'Strip';
-        $unitType = 'Capsule';
-    } else {
-        $packType = 'Strip';
-        $unitType = 'Tablet';
-    }
-@endphp
+                        <tbody>
+                            @foreach($order->items as $index => $poItem)
 
+                            @php
+                            $packSize = optional($poItem->supplierItemCatalog)->pack_size
+                                        ?? $poItem->item->conversion_factor
+                                        ?? 1;
 
-                                        <td>
-                                            <input type="number"
-                                                   step="0.01"
-                                                   min="0.01"
-                                                   required
-                                                   class="form-control final-mrp-input"
-                                                   name="items[{{ $index }}][final_mrp]"
-                                                   placeholder="Enter MRP"
-                                                   data-order-id="{{ $order->id }}"
-                                                   data-purchase-total="{{ $order->net_amount ?? 0 }}">
-                                                   <input type="hidden"
-       name="items[{{ $index }}][conversion_factor]"
-       value="{{ $packSize }}">
-                                        </td>
-                                        <td>
-<div class="fw-semibold text-primary small">
-    📦 1 {{ $packType }} of {{ $packSize }} {{ $unitType }}
+                            $itemName = strtolower($poItem->item->name ?? '');
+
+                            if (str_contains($itemName, 'injection')) {
+                                $packType = 'Vial';
+                                $unitType = 'Injection';
+                            } elseif (str_contains($itemName, 'syrup')) {
+                                $packType = 'Bottle';
+                                $unitType = 'ml';
+                            } elseif (str_contains($itemName, 'capsule')) {
+                                $packType = 'Strip';
+                                $unitType = 'Capsule';
+                            } else {
+                                $packType = 'Strip';
+                                $unitType = 'Tablet';
+                            }
+                            @endphp
+
+                            <tr>
+                                <td>{{ $poItem->item->name }}</td>
+
+                                <td>₹ {{ number_format($poItem->rate ?? 0, 2) }}</td>
+
+                                <td>
+                                    ₹ {{ number_format(optional($poItem->supplierItemCatalog)->base_price ?? 0, 2) }}
+                                </td>
+
+                                <!-- hidden -->
+                                <input type="hidden"
+                                       name="items[{{ $index }}][item_id]"
+                                       value="{{ $poItem->item_id }}">
+
+                                <input type="hidden"
+                                       name="items[{{ $index }}][conversion_factor]"
+                                       value="{{ $packSize }}">
+
+                                <!-- OFFLINE -->
+                                <td>
+                                    <input type="number"
+                                           step="0.01"
+                                           min="0.01"
+                                           required
+                                           class="form-control offline-price-input"
+                                           name="items[{{ $index }}][offline_price]"
+                                           placeholder="Store Price"
+                                           data-order-id="{{ $order->id }}"
+                                           data-total="{{ $order->net_amount }}">
+                                </td>
+
+                                <!-- ONLINE -->
+                                <td>
+                                    <input type="number"
+                                           step="0.01"
+                                           min="0.01"
+                                           class="form-control online-price-input"
+                                           name="items[{{ $index }}][online_price]"
+                                           placeholder="App Price">
+                                </td>
+
+                                <!-- PACK -->
+                                <td>
+                                    <small class="text-primary">
+                                        📦 1 {{ $packType }} of {{ $packSize }} {{ $unitType }}
+                                    </small>
+                                </td>
+                            </tr>
+
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PROFIT -->
+                <div class="alert alert-info mt-3">
+                    <span class="profit-preview-text">
+                        Enter offline price to see profit
+                    </span>
+                </div>
+
+            </div>
+
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary px-4">
+                    Save Prices
+                </button>
+            </div>
+
+        </form>
+    </div>
 </div>
 
 
-</td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+</div>
 
-                        <small class="text-muted">
-                            Example: 1 strip = 10 tablets, 1 strip = 9 tablets, 1 strip = 15 tablets
-                        </small>
-                        
-                        <!-- Price Preview -->
-                        <div class="alert alert-info bg-info bg-opacity-10 border-0 rounded-3 mt-3">
-                            <div class="d-flex gap-2">
-                                <i class="fas fa-calculator text-info mt-1"></i>
-                                <div>
-                                    <small class="d-block text-muted">Estimated Profit Margin</small>
-                                    <span class="fw-semibold profit-preview-text" data-profit-preview="{{ $order->id }}">Enter Final MRP to see profit preview</span>
-                                  <small class="text-muted d-block mt-1">
-    Based on Grand Total: ₹ {{ number_format($order->net_amount ?? 0, 2) }}
-</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="modal-footer border-0 px-4 pb-4 pt-0">
-                        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary px-4">
-                            <i class="fas fa-save me-2"></i>Save MRP
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    @endforeach
+@endforeach
 @endif
+
 
 @push('styles')
 <style>
@@ -1207,212 +1212,133 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl, {
-                placement: tooltipTriggerEl.dataset.bsPlacement || 'top'
-            })
-        });
-        
-        // Auto-submit filters
-        document.querySelector('select[name="per_page"]')?.addEventListener('change', function() {
+document.addEventListener('DOMContentLoaded', function() {
+
+    // TOOLTIP
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (el) {
+        return new bootstrap.Tooltip(el);
+    });
+
+    // FILTER AUTO SUBMIT
+    document.querySelector('select[name="per_page"]')?.addEventListener('change', () => {
+        document.getElementById('filterForm').submit();
+    });
+
+    document.querySelector('select[name="status"]')?.addEventListener('change', () => {
+        document.getElementById('filterForm').submit();
+    });
+
+    // SEARCH DEBOUNCE
+    let timeout;
+    document.querySelector('input[name="search"]')?.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
             document.getElementById('filterForm').submit();
-        });
-        
-        document.querySelector('select[name="status"]')?.addEventListener('change', function() {
+        }, 500);
+    });
+
+    // DATE AUTO SUBMIT
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        input.addEventListener('change', () => {
             document.getElementById('filterForm').submit();
-        });
-        
-        // Search with debounce
-        let searchTimeout;
-        let searchInput = document.querySelector('input[name="search"]');
-        if(searchInput) {
-            searchInput.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    document.getElementById('filterForm').submit();
-                }, 500);
-            });
-        }
-        
-        // Date inputs auto-submit
-        document.querySelectorAll('input[type="date"]').forEach(input => {
-            input.addEventListener('change', () => {
-                document.getElementById('filterForm').submit();
-            });
-        });
-        
-        // Handle Publish Form Submission with SweetAlert confirmation
-        document.querySelectorAll('.publish-form').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const orderId = this.dataset.orderId;
-                const formElement = this;
-                
-                Swal.fire({
-                    title: 'Make Live for Sales?',
-                    text: "This will publish all products for sale in the inventory. This action cannot be undone.",
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#8b5cf6',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, make live',
-                    cancelButtonText: 'Cancel',
-                    reverseButtons: true,
-                    customClass: {
-                        popup: 'rounded-4',
-                        confirmButton: 'btn btn-primary px-4',
-                        cancelButton: 'btn btn-light px-4'
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        Swal.fire({
-                            title: 'Publishing...',
-                            text: 'Making products available for sale',
-                            allowOutsideClick: false,
-                            didOpen: () => {
-                                Swal.showLoading();
-                                formElement.submit();
-                            }
-                        });
-                    }
-                });
-            });
-        });
-        
-        // Handle Receive Stock confirmation
-        document.querySelectorAll('.receive-stock-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                const form = this.closest('form');
-                if(form) {
-                    e.preventDefault();
-                    Swal.fire({
-                        title: 'Receive Stock?',
-                        text: "This will add the stock to your inventory. Continue?",
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonColor: '#10b981',
-                        cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, receive stock',
-                        cancelButtonText: 'Cancel',
-                        reverseButtons: true,
-                        customClass: {
-                            popup: 'rounded-4',
-                            confirmButton: 'btn btn-success px-4',
-                            cancelButton: 'btn btn-light px-4'
-                        }
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            Swal.fire({
-                                title: 'Processing...',
-                                text: 'Receiving stock into inventory',
-                                allowOutsideClick: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                    form.submit();
-                                }
-                            });
-                        }
-                    });
-                }
-            });
         });
     });
-    
-    // Profit preview function
-    function updateProfitPreview(orderId, totalAmount) {
-        const modal = document.getElementById(`updatePriceModal${orderId}`);
-        if (!modal) return;
-        
-        const priceInputs = modal.querySelectorAll('.final-mrp-input');
-        const profitPreviewSpan = modal.querySelector('.profit-preview-text');
-        
-        if (!priceInputs.length || !profitPreviewSpan) return;
-        
-        const calculateTotalMRP = () => {
-            let totalMRP = 0;
-            priceInputs.forEach(input => {
-                const value = parseFloat(input.value);
-                if (!isNaN(value) && value > 0) {
-                    totalMRP += value;
-                }
-            });
-            return totalMRP;
-        };
-        
-        const updatePreview = () => {
-            const totalMRP = calculateTotalMRP();
-            
-            if (totalMRP === 0) {
-                profitPreviewSpan.innerHTML = `
-                    <span class="text-muted">
-                        Enter Final MRP to see profit preview
-                    </span>
-                `;
-                return;
-            }
-            
-            const totalProfit = totalMRP - totalAmount;
-            const marginPercent = totalAmount > 0 ? ((totalProfit / totalAmount) * 100) : 0;
-            
-            profitPreviewSpan.innerHTML = `
-                <span class="${totalProfit >= 0 ? 'text-success' : 'text-danger'} fw-semibold">
-                    ₹ ${totalProfit.toFixed(2)} profit
-                </span>
-                <small class="d-block text-muted">
-                    ${marginPercent.toFixed(1)}% margin
-                </small>
-            `;
-        };
-        
-        priceInputs.forEach(input => {
-            input.addEventListener('input', updatePreview);
+
+});
+
+
+// 🔥 PROFIT CALCULATION (FIXED)
+function updateProfitPreview(orderId, totalAmount) {
+
+    const modal = document.getElementById(`updatePriceModal${orderId}`);
+    if (!modal) return;
+
+    const inputs = modal.querySelectorAll('.offline-price-input'); // ✅ FIXED
+    const preview = modal.querySelector('.profit-preview-text');
+
+    if (!inputs.length || !preview) return;
+
+    const update = () => {
+        let total = 0;
+
+        inputs.forEach(i => {
+            total += parseFloat(i.value || 0);
         });
-    }
-    
-    // Initialize profit preview for each order modal
-    @foreach($orders as $order)
-    updateProfitPreview(
-        {{ $order->id }},
-        {{ $order->net_amount ?? 0 }}
-    );
+
+        if (total === 0) {
+            preview.innerHTML = `<span class="text-muted">Enter Offline Price to see profit</span>`;
+            return;
+        }
+
+        let profit = total - totalAmount;
+        let percent = totalAmount > 0 ? (profit / totalAmount) * 100 : 0;
+
+        preview.innerHTML = `
+            <span class="${profit >= 0 ? 'text-success' : 'text-danger'} fw-semibold">
+                ₹ ${profit.toFixed(2)} profit
+            </span>
+            <small class="d-block text-muted">
+                ${percent.toFixed(1)}% margin
+            </small>
+        `;
+    };
+
+    inputs.forEach(i => i.addEventListener('input', update));
+}
+
+
+// INIT FOR ALL MODALS
+@foreach($orders as $order)
+updateProfitPreview({{ $order->id }}, {{ $order->net_amount ?? 0 }});
 @endforeach
-    
-    // Cancel order function
-    function cancelOrder(id) {
-        Swal.fire({
-            title: 'Cancel Purchase Order?',
-            text: "This action cannot be undone!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, cancel order',
-            cancelButtonText: 'No, keep it',
-            reverseButtons: true,
-            customClass: {
-                popup: 'rounded-4',
-                confirmButton: 'btn btn-danger px-4',
-                cancelButton: 'btn btn-light px-4'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const form = document.getElementById('cancel-form-' + id);
-                if (form) {
-                    Swal.fire({
-                        title: 'Processing...',
-                        text: 'Cancelling your order',
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                            form.submit();
-                        }
-                    });
-                }
-            }
-        });
+
+
+// 🔥 AUTO COPY OFFLINE → ONLINE
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('offline-price-input')) {
+        let row = e.target.closest('tr');
+        let online = row.querySelector('.online-price-input');
+
+        if (online && !online.value) {
+            online.value = e.target.value;
+        }
     }
+});
+
+
+// 🔥 ONLINE < OFFLINE WARNING
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('online-price-input')) {
+        let row = e.target.closest('tr');
+
+        let offline = parseFloat(row.querySelector('.offline-price-input')?.value || 0);
+        let online = parseFloat(e.target.value || 0);
+
+        if (online < offline) {
+            e.target.style.border = "1px solid red";
+        } else {
+            e.target.style.border = "";
+        }
+    }
+});
+
+
+// 🔥 CANCEL ORDER
+function cancelOrder(id) {
+    Swal.fire({
+        title: 'Cancel Purchase Order?',
+        text: "This action cannot be undone!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonText: 'No',
+        confirmButtonText: 'Yes Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('cancel-form-' + id)?.submit();
+        }
+    });
+}
 </script>
 @endpush
