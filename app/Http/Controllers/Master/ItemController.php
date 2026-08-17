@@ -805,8 +805,7 @@ $subCategoryId = $this->getSubCategoryId(
             $imagePath = null;
             $galleryImages = [];
 
-            $imageUrls = $rowData['image_url'] ?? null;
-
+$imageUrls = $rowData['image_urls'] ?? $rowData['image_url'] ?? null;
             if (!empty($imageUrls)) {
                 $separator = strpos($imageUrls, '|') !== false ? '|' : (strpos($imageUrls, ',') !== false ? ',' : null);
                 
